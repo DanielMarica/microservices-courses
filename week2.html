@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 2 - Communication entre Microservices</title>
+    <link rel="stylesheet" href="content-style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📕 WEEK 2</h1>
+            <p class="subtitle">Communication entre Microservices</p>
+        </header>
+
+        <div class="back-btn">
+            <a href="index.html" class="btn">← Retour à l'accueil</a>
+        </div>
+
+        <main>
+            <!-- ==================== OBJECTIF DE LA LEÇON ==================== -->
+            <section>
+                <h2>1. OBJECTIF DE LA LEÇON</h2>
+                
+                <div class="definition">
+                    <strong>📌 Objectif principal</strong>
+                    <p>Comprendre comment les microservices communiquent entre eux et choisir la bonne stratégie de communication (synchrone vs asynchrone) selon le contexte.</p>
+                </div>
+
+                <h3>Ce que nous allons apprendre :</h3>
+                <ul>
+                    <li>Les défis de la communication dans une architecture distribuée</li>
+                    <li>Communication synchrone (REST, gRPC)</li>
+                    <li>Communication asynchrone (Message Queues, Events)</li>
+                    <li>Avantages et inconvénients de chaque approche</li>
+                    <li>Quand utiliser quelle stratégie</li>
+                </ul>
+            </section>
+
+            <!-- ==================== LE DÉFI DE LA COMMUNICATION ==================== -->
+            <section>
+                <h2>2. LE DÉFI DE LA COMMUNICATION</h2>
+
+                <div class="definition">
+                    <strong>📌 Principe fondamental</strong>
+                    <p>Bien que chaque service soit autonome, la vraie valeur métier vient de leur collaboration. Cela crée des défis en termes de communication, cohérence des données et fiabilité dans un système distribué.</p>
+                </div>
+
+                <h3>Comparaison Architecture Monolithe vs Microservices</h3>
+
+                <div class="example">
+                    <strong>💡 Architecture Monolithe</strong>
+                    <p>Dans un monolithe, tout est dans la même application :</p>
+                    <ul>
+                        <li>Gestion des produits et stock (Inventory)</li>
+                        <li>Gestion des informations clients</li>
+                        <li>Gestion des commandes clients</li>
+                    </ul>
+                    <p><strong>Communication :</strong> Appels de méthodes directs (très simple)</p>
+                </div>
+
+                <div class="example">
+                    <strong>💡 Architecture Microservices</strong>
+                    <p>Chaque responsabilité est un service séparé :</p>
+                    <ul>
+                        <li><strong>Product Service</strong> : Gère produits et stock</li>
+                        <li><strong>Customer Service</strong> : Gère informations clients</li>
+                        <li><strong>Order Service</strong> : Gère commandes clients</li>
+                    </ul>
+                    <p><strong>Communication :</strong> Via réseau (HTTP, messages, events)</p>
+                    <p><strong>Défis :</strong> Latence réseau, pannes, cohérence des données</p>
+                </div>
+
+                <h3>Les questions à se poser :</h3>
+                <ul>
+                    <li>Comment un service peut-il appeler un autre service ?</li>
+                    <li>Que se passe-t-il si un service est en panne ?</li>
+                    <li>Comment gérer la cohérence des données entre services ?</li>
+                    <li>Faut-il attendre la réponse ou continuer sans bloquer ?</li>
+                </ul>
+            </section>
+
+            <!-- ==================== DEUX TYPES DE COMMUNICATION ==================== -->
+            <section>
+                <h2>3. DEUX TYPES DE COMMUNICATION</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Comportement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Synchrone (Request/Response)</strong></td>
+                            <td>Le client appelle un service et <strong>attend sa réponse</strong> avant de continuer.</td>
+                            <td>• Style requête/réponse<br>
+                                • Facile à comprendre et implémenter<br>
+                                • Lie la disponibilité du client au service</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Asynchrone (Message/Event)</strong></td>
+                            <td>Un producteur envoie un message/événement à un broker, qui le distribue aux consommateurs intéressés. Le producteur <strong>n'attend pas</strong> de réponse.</td>
+                            <td>• Services plus résilients et scalables<br>
+                                • Introduit des délais<br>
+                                • Cohérence éventuelle (eventual consistency)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="definition">
+                    <strong>📌 Analogie simple</strong>
+                    <p><strong>Synchrone</strong> = Appel téléphonique : vous appelez quelqu'un et attendez qu'il réponde.</p>
+                    <p><strong>Asynchrone</strong> = Email : vous envoyez un email et continuez votre travail sans attendre la réponse.</p>
+                </div>
+            </section>
+
+            <!-- ==================== COMMUNICATION SYNCHRONE ==================== -->
+            <section>
+                <h2>4. COMMUNICATION SYNCHRONE</h2>
+
+                <h3>Exemples de technologies</h3>
+                <ul>
+                    <li><strong>HTTP/REST</strong> : Le plus commun (JSON sur HTTP)</li>
+                    <li><strong>gRPC</strong> : Plus performant (binaire sur HTTP/2)</li>
+                </ul>
+
+                <h3>✅ Avantages</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Avantage</th>
+                            <th>Explication</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Simple & familier</strong></td>
+                            <td>HTTP/REST et gRPC sont bien connus et documentés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Résultat immédiat</strong></td>
+                            <td>Le client reçoit la réponse tout de suite (meilleure UX)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Débogage facile</strong></td>
+                            <td>Trace claire requête → réponse</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bon pour les lectures</strong></td>
+                            <td>Idéal pour GET (consulter données) et opérations nécessitant confirmation instantanée</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>❌ Inconvénients</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Inconvénient</th>
+                            <th>Explication</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Couplage fort (tight coupling)</strong></td>
+                            <td>Le client dépend de la disponibilité du service appelé</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pannes en cascade</strong></td>
+                            <td>Si Service A → B → C et C tombe, tout le flux échoue</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Latence amplifiée</strong></td>
+                            <td>Chaque appel ajoute de la latence (délai cumulé)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Limites de scalabilité</strong></td>
+                            <td>Difficile d'absorber les pics de charge (le client bloque en attendant)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Réseau bavard (chatty)</strong></td>
+                            <td>Beaucoup de requêtes = overhead réseau élevé</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Complexité retry/timeout</strong></td>
+                            <td>Il faut gérer les tentatives de reconnexion et timeouts</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>💡 Exemple synchrone : Vérifier le stock</strong>
+                    <pre>
+1. Client demande : "Créer une commande pour produit X"
+   ↓
+2. Order Service appelle Product Service :
+   "Est-ce que produit X est en stock ?"
+   ↓ (ATTEND la réponse)
+3. Product Service répond : "Oui, 10 en stock"
+   ↓
+4. Order Service crée la commande
+   ↓
+5. Client reçoit : "Commande créée ✓"
+
+⏱️ Temps total = Somme de tous les appels
+                    </pre>
+                </div>
+            </section>
+
+            <!-- ==================== COMMUNICATION ASYNCHRONE ==================== -->
+            <section>
+                <h2>5. COMMUNICATION ASYNCHRONE</h2>
+
+                <h3>Exemples de technologies</h3>
+                <ul>
+                    <li><strong>RabbitMQ</strong> : Message broker populaire</li>
+                    <li><strong>Apache Kafka</strong> : Pour streaming de données massives</li>
+                    <li><strong>AWS SQS</strong> : Service cloud de queues</li>
+                </ul>
+
+                <h3>✅ Avantages</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Avantage</th>
+                            <th>Explication</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Couplage faible (loose coupling)</strong></td>
+                            <td>Les services ne se bloquent pas mutuellement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scalable & résilient</strong></td>
+                            <td>Les consommateurs peuvent scaler indépendamment, retry automatique possible</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Flexible</strong></td>
+                            <td>Facile d'ajouter de nouveaux consommateurs sans modifier les producteurs</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Lisse les pics de charge</strong></td>
+                            <td>Les messages sont bufferisés dans une queue (traitement progressif)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>❌ Inconvénients</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Inconvénient</th>
+                            <th>Explication</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Cohérence éventuelle</strong></td>
+                            <td>Les données ne sont pas toujours à jour immédiatement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Plus complexe</strong></td>
+                            <td>Nécessite un broker + gestion des événements</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Débogage difficile</strong></td>
+                            <td>Flux distribués plus difficiles à tracer</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Problèmes de livraison</strong></td>
+                            <td>Besoin d'idempotence et déduplication (éviter de traiter 2x le même message)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Feedback utilisateur plus lent</strong></td>
+                            <td>Nécessite généralement un Notification Service pour informer l'utilisateur</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>💡 Exemple asynchrone : Envoyer email de confirmation</strong>
+                    <pre>
+1. Client demande : "Créer une commande"
+   ↓
+2. Order Service crée la commande
+   ↓
+3. Order Service publie événement : "OrderCreated"
+   ↓ (NE BLOQUE PAS)
+4. Client reçoit immédiatement : "Commande créée ✓"
+
+--- Pendant ce temps (en arrière-plan) ---
+
+5. Notification Service écoute l'événement "OrderCreated"
+   ↓
+6. Notification Service envoie l'email
+   ↓
+7. Email arrive quelques secondes plus tard
+
+⏱️ Le client n'a pas attendu l'envoi de l'email !
+                    </pre>
+                </div>
+            </section>
+
+            <!-- ==================== DÉFIS TYPIQUES ==================== -->
+            <section>
+                <h2>6. DÉFIS TYPIQUES DE LA COMMUNICATION</h2>
+
+                <div class="definition">
+                    <strong>📌 Note importante</strong>
+                    <p>Les slides mentionnent des défis et solutions mais le contenu détaillé n'est pas visible dans le PowerPoint. Voici les défis classiques en microservices :</p>
+                </div>
+
+                <h3>Défis communs :</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Défi</th>
+                            <th>Description</th>
+                            <th>Solution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Pannes réseau</strong></td>
+                            <td>Le réseau peut tomber entre deux services</td>
+                            <td>Circuit Breaker, Retry avec backoff exponentiel</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Latence</strong></td>
+                            <td>Chaque appel réseau ajoute du délai</td>
+                            <td>Cache, async quand possible, optimiser les appels</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Transactions distribuées</strong></td>
+                            <td>Comment garantir la cohérence entre plusieurs services ?</td>
+                            <td>Pattern Saga (compensating transactions)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Duplication de messages</strong></td>
+                            <td>Un message peut être traité plusieurs fois</td>
+                            <td>Idempotence (même message traité 2x = même résultat)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ordre des messages</strong></td>
+                            <td>Les messages peuvent arriver dans le désordre</td>
+                            <td>Versioning, timestamps, message ordering dans le broker</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- ==================== SYNCHRONE VS ASYNCHRONE ==================== -->
+            <section>
+                <h2>7. SYNCHRONE VS ASYNCHRONE - QUAND UTILISER QUOI ?</h2>
+
+                <div class="definition">
+                    <strong>📌 Règle d'or</strong>
+                    <p>Les communications synchrone et asynchrone ont chacune leurs forces. Le meilleur choix dépend de la situation.</p>
+                </div>
+
+                <h3>Cas d'usage comparés</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Scénario</th>
+                            <th>Choix</th>
+                            <th>Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Vérifier le stock avant de confirmer une commande</strong></td>
+                            <td>Synchrone ✓</td>
+                            <td>L'utilisateur doit savoir immédiatement si le produit est disponible pour finaliser l'achat. L'async retarderait le feedback et frustrerait l'utilisateur.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Envoyer un email de confirmation après création de commande</strong></td>
+                            <td>Asynchrone ✓</td>
+                            <td>L'email n'est pas requis immédiatement. Il peut être déclenché par un événement OrderConfirmed. L'async garantit que le checkout reste rapide pour l'utilisateur.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gérer les pics de trafic du Black Friday</strong></td>
+                            <td>Asynchrone ✓</td>
+                            <td>Les requêtes synchrones surchargeraient les services sous forte demande. Avec des queues async, les requêtes sont bufferisées et traitées selon la capacité disponible.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Valider un compte client lors de la création de commande</strong></td>
+                            <td>Synchrone ✓</td>
+                            <td>La validation doit se faire instantanément pour empêcher des commandes invalides d'entrer dans le système. L'async permettrait des commandes de comptes inexistants ou bloqués.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Générer un rapport de ventes mensuel</strong></td>
+                            <td>Asynchrone ✓</td>
+                            <td>Les rapports n'ont pas besoin de bloquer l'expérience utilisateur. Les événements des commandes peuvent être collectés de manière async et traités plus tard pour l'analytique.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>💡 Résumé des bonnes pratiques</strong>
+                    <ul>
+                        <li><strong>Utilisez SYNCHRONE quand :</strong>
+                            <ul>
+                                <li>L'utilisateur a besoin d'une réponse immédiate</li>
+                                <li>Vous devez valider des données avant de continuer</li>
+                                <li>La cohérence doit être immédiate (strong consistency)</li>
+                            </ul>
+                        </li>
+                        <li><strong>Utilisez ASYNCHRONE quand :</strong>
+                            <ul>
+                                <li>L'opération peut se faire en arrière-plan (emails, notifications)</li>
+                                <li>Vous avez des pics de charge à gérer</li>
+                                <li>Plusieurs services doivent réagir à un événement</li>
+                                <li>La cohérence éventuelle est acceptable</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- ==================== RÉSUMÉ ==================== -->
+            <section>
+                <h2>8. RÉSUMÉ DE LA WEEK 2</h2>
+
+                <div class="info-box">
+                    <h3>✅ Ce que nous avons appris</h3>
+                    <ul>
+                        <li>Les défis de la communication dans une architecture distribuée</li>
+                        <li>Deux types de communication : synchrone et asynchrone</li>
+                        <li>Communication synchrone (REST, gRPC) : simple mais couplage fort</li>
+                        <li>Communication asynchrone (Message Queues, Events) : résilient mais complexe</li>
+                        <li>Avantages et inconvénients de chaque approche</li>
+                        <li>Quand utiliser quelle stratégie selon le contexte</li>
+                        <li>Défis typiques : pannes réseau, latence, transactions distribuées</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h3>🛠️ Exercice pratique (Week 2)</h3>
+                    <ul>
+                        <li>Installer RabbitMQ sur votre machine locale</li>
+                        <li>Remplacer la communication inter-services par de la messagerie asynchrone</li>
+                        <li>Garder l'approche synchrone pour l'API Gateway</li>
+                        <li>Émettre et consommer des événements :
+                            <ul>
+                                <li><strong>OrderCreated</strong> : publié par Order Service</li>
+                                <li><strong>StockReserved/StockRejected</strong> : publié par Product Service</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+    
+            </section>
+
+        </main>
+
+        <div class="back-btn">
+            <a href="index.html" class="btn">← Retour à l'accueil</a>
+        </div>
+
+        <footer>
+            <p>─────────────────────────────────</p>
+            <p>Week 2 - Communication entre Microservices</p>
+            <p>Bachelier Informatique 2022-2026 - BAC3</p>
+        </footer>
+    </div>
+</body>
+</html>
