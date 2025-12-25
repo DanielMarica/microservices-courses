@@ -8,12 +8,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Bouton de téléchargement PDF -->
-        <div style="text-align: right; margin-top: 20px;">
-            <a href="assets/Questionnaire_Microservices.pdf" class="btn" download style="background: #1976d2; color: #fff; padding: 8px 16px; border-radius: 5px; text-decoration: none; font-weight: 500; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
-                📄 Télécharger le questionnaire PDF
-            </a>
-        </div>
         <header>
             <h1>📘 WEEK 2</h1>
             <p class="subtitle">Architecture Microservices & API Gateway</p>
@@ -99,7 +93,9 @@
                     
                     <li><strong>Bien déterminer les frontières</strong><br>
                         Un découpage trop fin = trop de communication = complexité.<br>
+                        <p>exemple si bcp trop de microservice par exemple 12 on perds de la perfomance , plus de microservice veut dire + de requête = lenteur </p>
                         Un découpage trop large = perd les avantages des microservices.</li>
+                        <p>à l'inverse si trop de micro service en 1 par exemple une architecture monolithe on mes toute le fcontionallité dans une seul endroit on pert les qualité microservice qui consiste en séparer les logique métier en services specifique </p>
                 </ul>
 
                 <div class="example">
