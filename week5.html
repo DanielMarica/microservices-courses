@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 5 - Gestion des Données en Microservices | BINV3140</title>
+    <link rel="stylesheet" href="content-style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>WEEK 5 - GESTION DES DONNÉES</h1>
+            <p class="subtitle">BINV3140 - Microservices</p>
+            <p class="subtitle">2025-2026 | Strebelle Sébastien, Tarik Miri, Choquet Olivier</p>
+        </header>
+
+        <main>
+            <!-- Section 1 -->
+            <section>
+                <h2>1. INTRODUCTION - GESTION DES DONNÉES</h2>
+                
+                <p><strong>📌 Principe fondamental</strong></p>
+                <p>Dans une architecture microservices, chaque service possède sa propre base de données. Cette indépendance apporte de grands avantages mais crée également des défis importants en termes de cohérence des données.</p>
+
+                <h3>Caractéristiques principales</h3>
+                <ul>
+                    <li><strong>Données éparpillées</strong> : Une DB par service</li>
+                    <li><strong>DB polyglottes</strong> : DB SQL, NoSQL, graphes, etc.</li>
+                    <li><strong>Question centrale</strong> : Comment assurer la cohérence de ces données ?</li>
+                </ul>
+
+                <div class="definition">
+                    <strong>💡 Database Per Service Pattern</strong>
+                    <p>Chaque microservice possède sa propre base de données privée. Aucun autre service ne peut accéder directement à cette base. Toute communication se fait via l'API du service.</p>
+                </div>
+            </section>
+
+            <!-- Section 2 -->
+            <section>
+                <h2>2. AVANTAGES ET INCONVÉNIENTS</h2>
+
+                <h3>✅ Avantages du "Database Per Service"</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Avantage</th>
+                            <th>Explication</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Indépendance technologique</strong></td>
+                            <td>Choix de la meilleure DB pour son service (MongoDB, PostgreSQL, Neo4j, etc.)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Autonomie de développement</strong></td>
+                            <td>Chaque équipe gère son microservice sans dépendre des autres équipes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scalabilité</strong></td>
+                            <td>Chaque service peut être mis à l'échelle individuellement selon ses besoins</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>❌ Inconvénients du "Database Per Service"</h3>
+                <ul>
+                    <li><strong>Cohérence des données</strong> : Comment garantir que toutes les bases sont synchronisées ?</li>
+                    <li><strong>Transactions distribuées</strong> : Plus complexes que dans un monolithe</li>
+                    <li><strong>Complexité opérationnelle</strong> : Gérer plusieurs types de bases de données</li>
+                </ul>
+            </section>
+
+            <!-- Section 3 -->
+            <section>
+                <h2>3. ACID ET COHÉRENCE</h2>
+
+                <h3>Rappel : Principe ACID</h3>
+                <p>Dans une application monolithique ou frontend/backend classique, la cohérence est gérée par des <strong>transactions ACID</strong>.</p>
+
+                <div class="definition">
+                    <strong>💡 ACID - Atomicité, Cohérence, Isolation, Durabilité</strong>
+                    <p><strong>A</strong>tomicité : Transaction unique et indivisible (tout ou rien)</p>
+                    <p><strong>C</strong>ohérence : État valide (on passe d'un état à un autre suivant les règles)</p>
+                    <p><strong>I</strong>solation : Pas d'interférence entre transactions concurrentes</p>
+                    <p><strong>D</strong>urabilité : Les modifications sont permanentes une fois validées</p>
+                </div>
+
+                <h3>Application microservices : Deux approches</h3>
+                <p>Avec des bases de données distribuées, les transactions ACID globales deviennent complexes. On adopte donc différentes approches :</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Principe</th>
+                            <th>Mécanisme</th>
+                            <th>Exemple</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Cohérence forte</strong></td>
+                            <td>Le client est garanti de lire la dernière valeur écrite</td>
+                            <td>Appels synchrones entre services (ex : REST)</td>
+                            <td>Order Service appelle Product Service pour vérifier le stock avant validation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cohérence éventuelle</strong></td>
+                            <td>Les données ne sont pas toujours synchronisées immédiatement, mais le seront à terme</td>
+                            <td>Communication asynchrone via bus d'événements (Kafka, RabbitMQ)</td>
+                            <td>Product Service met à jour un prix, publie "PrixMiseAJour". Search Service écoute et met à jour son index</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 4 -->
+            <section>
+                <h2>4. THÉORÈME CAP</h2>
+
+                <p><strong>📌 Le théorème CAP</strong> stipule qu'un système distribué ne peut garantir simultanément que <strong>deux</strong> des trois propriétés suivantes :</p>
+
+                <div class="definition">
+                    <strong>💡 Les trois propriétés du théorème CAP</strong>
+                    <p><strong>C</strong> (Consistency) : Toutes les données sont synchronisées</p>
+                    <p><strong>A</strong> (Availability) : Le système répond toujours</p>
+                    <p><strong>P</strong> (Partition Tolerance) : Le système continue malgré des coupures réseaux</p>
+                </div>
+
+                <div class="example">
+                    <strong>🔍 Dans la pratique microservices</strong>
+                    <p>Dans une architecture microservice (utilisant le réseau), la <strong>tolérance au partitionnement (P)</strong> est indispensable car le réseau fonctionne en "Best Effort" (IP peut perdre des paquets).</p>
+                    <p><strong>Le choix va donc s'opérer pour chaque service entre la Cohérence (C) ou la Disponibilité (A) !</strong></p>
+                </div>
+
+                <h3>Choix CP vs AP</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Choix</th>
+                            <th>Description</th>
+                            <th>Exemple de service</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>CP (Cohérence forte)</strong></td>
+                            <td>Le système peut devenir indisponible en cas de partition pour garantir que les données restent exactes</td>
+                            <td>Microservice de stock (inventaire)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>AP (Disponibilité)</strong></td>
+                            <td>Le système reste opérationnel, mais les données peuvent être temporairement incohérentes (cohérence éventuelle)</td>
+                            <td>Microservice de recherche (catalogue)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 5 -->
+            <section>
+                <h2>5. SOLUTIONS ARCHITECTURALES</h2>
+
+                <p>Voici les principales solutions pour gérer les données dans une architecture microservices :</p>
+
+                <h3>🔧 Patterns et techniques</h3>
+                <ul>
+                    <li><strong>Sagas distribuées</strong> : Orchestrer des transactions longues avec compensation</li>
+                    <li><strong>Event Sourcing</strong> : Stocker les événements pour reconstruire l'état</li>
+                    <li><strong>CQRS</strong> : Séparer les lectures et écritures pour optimiser la cohérence</li>
+                    <li><strong>Timeouts & Retries intelligents</strong> : Gérer les échecs de communication</li>
+                    <li><strong>File d'attente</strong> (Kafka, RabbitMQ) : Garantir la livraison des événements</li>
+                </ul>
+            </section>
+
+            <!-- Section 6 -->
+            <section>
+                <h2>6. PATTERN SAGA</h2>
+
+                <p><strong>📌 Objectif</strong></p>
+                <p>Le pattern <strong>SAGA</strong> permet une cohérence éventuelle via des transactions locales et des compensations. Il évite les verrous distribués et les transactions globales bloquantes.</p>
+
+                <h3>Fonctionnement de SAGA</h3>
+                <ol>
+                    <li>Chaque microservice exécute une <strong>transaction locale</strong> et publie un <strong>événement</strong></li>
+                    <li>Si une étape échoue, une <strong>série de compensations</strong> est déclenchée pour annuler les effets des étapes précédentes</li>
+                </ol>
+
+                <div class="definition">
+                    <strong>💡 Avantages de SAGA</strong>
+                    <p><strong>Favorise la disponibilité</strong> : En cas d'échec d'un service, les autres peuvent continuer à fonctionner</p>
+                    <p><strong>Gestion asynchrone des erreurs</strong> : Via des transactions compensatoires (respecte le principe A + P du CAP)</p>
+                    <p><strong>Cohérence métier conservée</strong> : Pas de ACID global mais cohérence métier respectée</p>
+                </div>
+
+                <div class="example">
+                    <strong>🔍 Exemple SAGA</strong>
+                    <p>Si le paiement échoue, la commande est annulée automatiquement → logique métier respectée</p>
+                </div>
+
+                <h3>Deux approches SAGA</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Approche</th>
+                            <th>Description</th>
+                            <th>Avantages</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Orchestration</strong></td>
+                            <td>Un service central (orchestrateur) pilote le déroulement de la saga</td>
+                            <td>Plus facile à gérer et à tracer</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Chorégraphie</strong></td>
+                            <td>Les services réagissent aux événements sans coordination centrale</td>
+                            <td>Plus simple, mais difficile à suivre</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 7 -->
+            <section>
+                <h2>7. EVENT SOURCING</h2>
+
+                <div class="definition">
+                    <strong>💡 Event Sourcing</strong>
+                    <p><strong>Event Sourcing</strong> est une approche où l'état d'un système n'est pas stocké directement sous forme d'entités ou d'objets, mais est <strong>reconstruit à partir d'une séquence d'événements</strong>.</p>
+                </div>
+
+                <div class="example">
+                    <strong>🔍 Exemple : Compte bancaire</strong>
+                    <p>Au lieu de stocker directement le solde du compte, on enregistre chaque <strong>événement financier</strong> lié au compte. Le solde est <strong>calculé dynamiquement</strong> en rejouant tous les événements.</p>
+                    
+                    <pre><code>[
+  { "type": "CompteOuvert", "date": "2025-01-01", "montantInitial": 1000 },
+  { "type": "DepotEffectue", "date": "2025-02-10", "montant": 500 },
+  { "type": "RetraitEffectue", "date": "2025-03-05", "montant": 200 },
+  { "type": "DepotEffectue", "date": "2025-04-15", "montant": 300 }
+]</code></pre>
+                    
+                    <p><strong>Solde actuel</strong> = 1000 + 500 - 200 + 300 = <strong>1600 €</strong></p>
+                </div>
+
+                <h3>✅ Avantages Event Sourcing</h3>
+                <ul>
+                    <li><strong>Audit complet</strong> : Historique détaillé de tous les changements</li>
+                    <li><strong>Reconstruction de l'état</strong> : Possibilité de rejouer les événements après une panne</li>
+                    <li><strong>Débogage facilité</strong> : Trace complète de toutes les opérations</li>
+                </ul>
+            </section>
+
+            <!-- Section 8 -->
+            <section>
+                <h2>8. PATTERN CQRS</h2>
+
+                <div class="definition">
+                    <strong>💡 CQRS - Command Query Responsibility Segregation</strong>
+                    <p><strong>CQRS</strong> signifie <strong>Séparation des responsabilités entre commandes et requêtes</strong>. On sépare les lectures (queries) des écritures (commands).</p>
+                </div>
+
+                <h3>✅ Avantages CQRS</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Avantage</th>
+                            <th>Explication</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Scalabilité</strong></td>
+                            <td>Les lectures et écritures peuvent être optimisées séparément</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Performance</strong></td>
+                            <td>Les vues de lecture peuvent être dénormalisées pour des requêtes rapides</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Complémentarité</strong></td>
+                            <td>Se combine très bien avec l'Event Sourcing</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>🔍 Exemple CQRS</strong>
+                    <p><strong>Écriture</strong> : Order Service enregistre une commande dans sa DB transactionnelle</p>
+                    <p><strong>Lecture</strong> : Search Service maintient une vue dénormalisée optimisée pour les recherches</p>
+                    <p>Les deux modèles sont synchronisés via des événements publiés par Order Service</p>
+                </div>
+            </section>
+
+            <!-- Section 9 -->
+            <section>
+                <h2>9. TIMEOUTS & RETRIES INTELLIGENTS</h2>
+
+                <p><strong>📌 Objectif</strong></p>
+                <p>Permettre à un système de <strong>rester robuste</strong> face aux pannes temporaires, aux lenteurs réseau ou aux indisponibilités de services.</p>
+
+                <h3>Deux techniques essentielles</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Technique</th>
+                            <th>Description</th>
+                            <th>Bonnes pratiques</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Timeout</strong></td>
+                            <td>Limite l'attente pour ne pas bloquer le système indéfiniment</td>
+                            <td>Définir des timeouts adaptés au contexte (ex: 5s pour un appel API)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Retry</strong></td>
+                            <td>Réessayer après un délai en cas d'échec</td>
+                            <td>
+                                • Utiliser un backoff exponentiel (1s, 2s, 4s, 8s...)<br>
+                                • Limiter le nombre de tentatives (ex: max 3 retries)
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>🔍 Stratégie de Retry avec backoff exponentiel</strong>
+                    <p>Tentative 1 : Échec → Attendre 1 seconde</p>
+                    <p>Tentative 2 : Échec → Attendre 2 secondes</p>
+                    <p>Tentative 3 : Échec → Attendre 4 secondes</p>
+                    <p>Tentative 4 : Échec → Abandon et compensation</p>
+                </div>
+            </section>
+
+            <!-- Section 10 -->
+            <section>
+                <h2>10. FILES D'ATTENTE (MESSAGE QUEUES)</h2>
+
+                <p><strong>📌 Objectif</strong></p>
+                <p>Garantir la livraison des événements et découpler les services grâce à des systèmes de messagerie asynchrone.</p>
+
+                <h3>Technologies populaires</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Technologie</th>
+                            <th>Type</th>
+                            <th>Cas d'usage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>RabbitMQ</strong></td>
+                            <td>Message broker</td>
+                            <td>Orienté message, fiable, supporte les échanges complexes (fanout, topic, direct)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Apache Kafka</strong></td>
+                            <td>Event streaming platform</td>
+                            <td>Orienté événement, très performant, adapté aux gros volumes et au streaming</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>✅ Avantages des files d'attente</h3>
+                <ul>
+                    <li><strong>Découplage</strong> : Les services ne se bloquent pas mutuellement</li>
+                    <li><strong>Résilience</strong> : Les messages sont persistés même si le consommateur est down</li>
+                    <li><strong>Scalabilité</strong> : Plusieurs consommateurs peuvent traiter les messages en parallèle</li>
+                    <li><strong>Lissage de charge</strong> : Les pics de trafic sont absorbés par la queue</li>
+                </ul>
+            </section>
+
+            <!-- Section 11 -->
+            <section>
+                <h2>11. TYPES DE BASES DE DONNÉES</h2>
+
+                <h3>Bases de données AP vs CP</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Propriétés CAP</th>
+                            <th>Caractéristiques</th>
+                            <th>Exemples</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Bases AP</strong></td>
+                            <td>Disponibilité + Partition</td>
+                            <td>
+                                • Privilégie la disponibilité<br>
+                                • Répond même si données obsolètes<br>
+                                • Continue en cas de coupure réseau
+                            </td>
+                            <td>DB NoSQL (Cassandra, DynamoDB)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bases CP</strong></td>
+                            <td>Cohérence + Partition</td>
+                            <td>
+                                • Privilégie la cohérence<br>
+                                • Répond avec données à jour<br>
+                                • Sacrifie disponibilité en cas de problème réseau
+                            </td>
+                            <td>DB SQL (PostgreSQL, MySQL)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Comparaison détaillée des bases de données</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type de base</th>
+                            <th>Exemple</th>
+                            <th>Modèle CAP</th>
+                            <th>Cohérence</th>
+                            <th>DB distribuée ?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>SQL classique</strong></td>
+                            <td>PostgreSQL, MySQL</td>
+                            <td>CP</td>
+                            <td>Forte (ACID)</td>
+                            <td>Non de base</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NoSQL clé/valeur</strong></td>
+                            <td>Cassandra, DynamoDB</td>
+                            <td>AP</td>
+                            <td>Éventuelle</td>
+                            <td>Oui</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NoSQL Document</strong></td>
+                            <td>MongoDB</td>
+                            <td>CP (par défaut) ou AP (configurable)</td>
+                            <td>Forte ou éventuelle</td>
+                            <td>Oui</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NoSQL Colonne</strong></td>
+                            <td>HBase</td>
+                            <td>CP</td>
+                            <td>Forte</td>
+                            <td>Oui</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NoSQL Graphe</strong></td>
+                            <td>Neo4j</td>
+                            <td>CP</td>
+                            <td>Forte</td>
+                            <td>Non de base</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Streaming / log distribué</strong></td>
+                            <td>Kafka</td>
+                            <td>AP</td>
+                            <td>Éventuelle</td>
+                            <td>Oui (pas stockage permanent)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 12 -->
+            <section>
+                <h2>12. SHARDING</h2>
+
+                <p><strong>📌 Principe</strong></p>
+                <p>En général une DB par service suffit, mais pour de <strong>gros volumes</strong>, on peut diviser la base de données en <strong>shards</strong> (partitions).</p>
+
+                <h3>Types de Sharding</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Exemple</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Sharding horizontal</strong></td>
+                            <td>Division par lignes (le plus courant)</td>
+                            <td>Division par zone géographique : clients EU dans un shard, clients US dans un autre</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sharding vertical</strong></td>
+                            <td>Division par colonnes ou fonctionnalités</td>
+                            <td>Données personnelles dans un shard, historiques d'achat dans un autre</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sharding fonctionnel</strong></td>
+                            <td>Chaque shard gère un domaine métier (moins utilisé)</td>
+                            <td>Un shard pour commandes, un autre pour paiements</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 13 -->
+            <section>
+                <h2>13. EXERCICE DE RÉFLEXION</h2>
+
+                <div class="info-box">
+                    <h3>🧠 Contexte</h3>
+                    <p>Une entreprise développe une <strong>plateforme de réservation de billets</strong> pour des événements culturels.</p>
+                    <p>Elle repose sur une architecture <strong>microservices</strong> :</p>
+                    <ul>
+                        <li><strong>Service Utilisateur</strong></li>
+                        <li><strong>Service Événement</strong></li>
+                        <li><strong>Service Réservation</strong></li>
+                        <li><strong>Service Paiement</strong></li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h3>📊 Situation</h3>
+                    <p>Lors d'un pic de trafic (ex : ouverture des ventes pour un concert), le système subit une forte charge. Vous devez garantir une <strong>expérience utilisateur fluide</strong>, tout en maintenant une <strong>cohérence raisonnable des données</strong>.</p>
+                </div>
+
+                <h3>🔍 Question 1 : Analyse du théorème CAP</h3>
+                <p><strong>a)</strong> Expliquez pourquoi il est impossible de garantir <strong>C</strong>, <strong>A</strong> et <strong>P</strong> en même temps.</p>
+                <p><strong>b)</strong> Donnez un exemple de situation où une partition réseau pourrait survenir dans ce contexte.</p>
+
+                <h3>🔍 Question 2 : Choix stratégique par service</h3>
+                <p>Pour chaque microservice, indiquez le compromis à privilégier en cas de partition :</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Choix : Cohérence ou Disponibilité</th>
+                            <th>Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Utilisateur</strong></td>
+                            <td>?</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Événement</strong></td>
+                            <td>?</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Réservation</strong></td>
+                            <td>?</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Paiement</strong></td>
+                            <td>?</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>🔍 Question 3 : Scénario critique</h3>
+                <p>Le <strong>Service Réservation</strong> et le <strong>Service Paiement</strong> sont désynchronisés à cause d'un problème réseau.</p>
+                <p><strong>a)</strong> Quels risques cela engendre ?</p>
+                <p><strong>b)</strong> Quelles solutions architecturales pouvez-vous proposer pour :</p>
+                <ul>
+                    <li>Éviter les <strong>réservations fantômes</strong> (places réservées mais non payées) ?</li>
+                    <li>Réconcilier les données après rétablissement du réseau ?</li>
+                </ul>
+            </section>
+
+            <!-- Section 14 -->
+            <section>
+                <h2>14. CORRECTION EXERCICE</h2>
+
+                <h3>📝 Question 1 : Analyse du théorème CAP</h3>
+                
+                <div class="example">
+                    <strong>a) Pourquoi impossible de garantir C, A et P ?</strong>
+                    <p>En cas de <strong>partition réseau</strong>, un système distribué doit choisir entre :</p>
+                    <ul>
+                        <li><strong>Cohérence (C)</strong> : Garantir que toutes les instances voient les mêmes données</li>
+                        <li><strong>Disponibilité (A)</strong> : Répondre à toutes les requêtes, même si certaines données sont obsolètes</li>
+                    </ul>
+                    <p>On ne peut pas avoir les deux simultanément en cas de partition réseau.</p>
+                </div>
+
+                <div class="example">
+                    <strong>b) Exemple de partition réseau</strong>
+                    <p>Une perte de connectivité entre le <strong>Service Réservation</strong> et le <strong>Service Paiement</strong> causée par un pic de trafic lors de l'ouverture des ventes d'un concert populaire.</p>
+                </div>
+
+                <h3>📝 Question 2 : Choix stratégique par service</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Choix</th>
+                            <th>Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Utilisateur</strong></td>
+                            <td>Disponibilité (A)</td>
+                            <td>Les données utilisateur peuvent être temporairement inconsistantes (ex : profil non mis à jour), sans impact critique</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Événement</strong></td>
+                            <td>Disponibilité (A)</td>
+                            <td>Il est préférable d'afficher les événements même si certains détails sont obsolètes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Réservation</strong></td>
+                            <td>Cohérence (C)</td>
+                            <td>Il est crucial d'éviter les doubles réservations ou les conflits de stock de places</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Paiement</strong></td>
+                            <td>Cohérence (C)</td>
+                            <td>La fiabilité des transactions financières est prioritaire sur la rapidité de réponse</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>📝 Question 3 : Scénario critique</h3>
+
+                <div class="example">
+                    <strong>a) Risques de la désynchronisation</strong>
+                    <ul>
+                        <li><strong>Réservations fantômes</strong> : Des places marquées comme réservées mais jamais payées → bloque des ressources inutilement</li>
+                        <li><strong>Incohérence des données</strong> : Service Réservation pense que la place est prise, mais Service Paiement n'a jamais validé</li>
+                        <li><strong>Expérience utilisateur dégradée</strong> : L'utilisateur croit avoir réservé mais n'a pas de confirmation, risque de double réservation ou perte de confiance</li>
+                    </ul>
+                </div>
+
+                <div class="example">
+                    <strong>b) Solutions architecturales</strong>
+                    
+                    <p><strong>1. Sagas distribuées</strong></p>
+                    <ul>
+                        <li>Orchestration ou chorégraphie de transactions longues</li>
+                        <li>Chaque étape a une <strong>action compensatoire</strong> en cas d'échec</li>
+                        <li>Exemple : Si le paiement échoue, la réservation est annulée automatiquement</li>
+                    </ul>
+
+                    <p><strong>2. Event Sourcing</strong></p>
+                    <ul>
+                        <li>Au lieu de stocker l'état final, on stocke <strong>tous les événements</strong> (ex : "Réservation créée", "Paiement validé")</li>
+                        <li>Permet de <strong>rejouer les événements</strong> pour reconstruire l'état après une panne</li>
+                    </ul>
+
+                    <p><strong>3. CQRS</strong></p>
+                    <ul>
+                        <li>Séparation des lectures et écritures</li>
+                        <li>Permet d'optimiser la cohérence en isolant les flux critiques (paiement)</li>
+                        <li>Lectures sur des vues projetées, mises à jour par événements</li>
+                    </ul>
+
+                    <p><strong>4. Timeouts & Retries intelligents</strong></p>
+                    <ul>
+                        <li>Si un service ne répond pas, réessayer avec un <strong>backoff exponentiel</strong></li>
+                        <li>Déclencher une alerte ou une compensation après N tentatives</li>
+                    </ul>
+
+                    <p><strong>5. File d'attente (Kafka, RabbitMQ)</strong></p>
+                    <ul>
+                        <li>Les événements (réservation, paiement) sont publiés dans une file</li>
+                        <li>Les services les consomment de manière asynchrone</li>
+                        <li>Garantit la livraison même en cas de panne temporaire</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 15 -->
+            <section>
+                <h2>15. EXERCICE PRATIQUE - SAGA</h2>
+
+                <div class="info-box">
+                    <h3>🛠️ Travail à faire</h3>
+                    <ul>
+                        <li>Clonez le code suivant : <a href="https://github.com/olivierchoquet/saga-orchestation.git" target="_blank">https://github.com/olivierchoquet/saga-orchestation.git</a></li>
+                        <li>Lisez le <strong>README</strong> !</li>
+                        <li>Effectuez les tests présents dans le README</li>
+                        <li>Complétez le code pour gérer une <strong>compensation</strong> dans la SAGA</li>
+                        <li>Voir case "Stock_Update_Failed" dans le service SAGA</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 16 -->
+            <section>
+                <h2>16. RÉSUMÉ DE LA WEEK 5</h2>
+
+                <h3>✅ Ce que nous avons appris</h3>
+                <ul>
+                    <li>Le pattern <strong>Database Per Service</strong> et ses avantages/inconvénients</li>
+                    <li>Les principes <strong>ACID</strong> et la différence entre <strong>cohérence forte</strong> et <strong>cohérence éventuelle</strong></li>
+                    <li>Le <strong>théorème CAP</strong> et les choix CP vs AP</li>
+                    <li>Les solutions architecturales : <strong>SAGA</strong>, <strong>Event Sourcing</strong>, <strong>CQRS</strong></li>
+                    <li>L'importance des <strong>Timeouts & Retries</strong> intelligents</li>
+                    <li>L'utilisation des <strong>files d'attente</strong> (RabbitMQ, Kafka)</li>
+                    <li>Les différents types de bases de données (SQL, NoSQL) et leurs propriétés CAP</li>
+                    <li>Le <strong>Sharding</strong> pour gérer de gros volumes</li>
+                </ul>
+
+                <div class="definition">
+                    <strong>💡 Message clé</strong>
+                    <p>Dans une architecture microservices, le <strong>choix entre cohérence et disponibilité</strong> dépend du <strong>risque métier</strong>. Il est souvent judicieux de :</p>
+                    <ul>
+                        <li>Prioriser la <strong>cohérence</strong> pour les services critiques (paiement, réservation)</li>
+                        <li>Accepter une <strong>cohérence éventuelle</strong> pour les services périphériques (profil, affichage)</li>
+                    </ul>
+                </div>
+            </section>
+
+            <div class="back-btn">
+                <a href="index.html" class="btn">← Retour à l'accueil</a>
+            </div>
+        </main>
+
+        <footer>
+            <p>BINV3140 - Microservices | 2025-2026</p>
+            <p>Strebelle Sébastien, Tarik Miri, Choquet Olivier</p>
+        </footer>
+    </div>
+</body>
+</html>

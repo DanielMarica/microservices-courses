@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 6 - Déploiement et Sécurité | BINV3140</title>
+    <link rel="stylesheet" href="content-style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>WEEK 6 - DÉPLOIEMENT ET SÉCURITÉ</h1>
+            <p class="subtitle">BINV3140 - Microservices</p>
+            <p class="subtitle">2025-2026 | Choquet Olivier, Miri Tarik, Strebelle Sébastien</p>
+        </header>
+
+        <main>
+            <!-- Section 1 -->
+            <section>
+                <h2>1. OBJECTIFS DE LA LEÇON</h2>
+                
+                <p><strong>📌 Cette semaine, nous abordons deux sujets critiques :</strong></p>
+                <ol>
+                    <li><strong>Le déploiement des microservices</strong> : Comment livrer du code de manière fiable et continue</li>
+                    <li><strong>La sécurisation des microservices</strong> : Comment protéger une architecture distribuée</li>
+                </ol>
+
+                <h3>Ce que nous allons apprendre</h3>
+                <ul>
+                    <li>Comprendre le concept de livraison (delivery) dans une architecture microservices</li>
+                    <li>Reconnaître le rôle des environnements (DEV, TEST, STAGING, PROD)</li>
+                    <li>Expliquer les principes de <strong>Continuous Integration (CI)</strong> et <strong>Continuous Deployment (CD)</strong></li>
+                    <li>Comprendre les stratégies de branching (Git Flow, Feature Branching, Trunk-Based)</li>
+                    <li>Comprendre l'importance de l'automatisation et des contrôles qualité</li>
+                    <li>Maîtriser les enjeux de sécurité : authentification, autorisation, sécurité réseau</li>
+                </ul>
+            </section>
+
+            <!-- Section 2 -->
+            <section>
+                <h2>2. POURQUOI LE DÉPLOIEMENT EST IMPORTANT</h2>
+
+                <p><strong>📌 Monolithe vs Microservices</strong></p>
+                <p>Le passage d'une architecture monolithique à une architecture microservices augmente l'autonomie des équipes, mais introduit également de nouveaux défis en termes de coordination, cohérence et observabilité.</p>
+
+                <h3>Comparaison Monolithe vs Microservices</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Aspect</th>
+                            <th>Architecture Monolithe</th>
+                            <th>Architecture Microservices</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Équipes</strong></td>
+                            <td>1 équipe</td>
+                            <td>Plusieurs équipes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Code Base</strong></td>
+                            <td>1 code base unique</td>
+                            <td>Plusieurs code bases indépendants</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pipeline</strong></td>
+                            <td>1 pipeline de déploiement</td>
+                            <td>Plusieurs pipelines (un par service)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Application</strong></td>
+                            <td>1 application déployée</td>
+                            <td>Plusieurs applications déployées</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>💡 Défi clé</strong>
+                    <p>La fragmentation augmente l'autonomie mais rend la <strong>coordination</strong>, la <strong>cohérence</strong> et l'<strong>observabilité</strong> critiques pour maintenir la fiabilité à travers les équipes et les pipelines indépendants.</p>
+                </div>
+            </section>
+
+            <!-- Section 3 -->
+            <section>
+                <h2>3. DÉFINITION DES ENVIRONNEMENTS</h2>
+
+                <div class="definition">
+                    <strong>💡 Qu'est-ce qu'un environnement ?</strong>
+                    <p>Un <strong>environnement</strong> est une copie séparée du système où une application est déployée pour un objectif spécifique : développement, test ou production.</p>
+                </div>
+
+                <h3>Types d'environnements</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Environnement</th>
+                            <th>Objectif</th>
+                            <th>Qui l'utilise ?</th>
+                            <th>Caractéristiques</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>DEV</strong></td>
+                            <td>Les développeurs écrivent et testent les fonctionnalités</td>
+                            <td>Développeurs</td>
+                            <td>Changements fréquents, instable</td>
+                        </tr>
+                        <tr>
+                            <td><strong>TEST / QA</strong></td>
+                            <td>Exécuter les tests automatisés et les vérifications d'intégration</td>
+                            <td>QA / Testeurs</td>
+                            <td>Données factices, réinitialisations fréquentes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>STAGING / PREPROD / UAT</strong></td>
+                            <td>Réplique de production pour validation avant release</td>
+                            <td>Développeurs + Équipes opérationnelles</td>
+                            <td>Même configuration que PROD</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PRODUCTION</strong></td>
+                            <td>Système live utilisé par de vrais utilisateurs</td>
+                            <td>Utilisateurs finaux (Équipes opérationnelles)</td>
+                            <td>Stable, surveillé 24/7</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Pourquoi plusieurs environnements ?</h3>
+                <ol>
+                    <li><strong>Isoler le développement de la production</strong> : Les développeurs changent constamment le code et peuvent casser des choses. Dans un environnement unique, une petite erreur peut faire crasher tout le système et impacter les utilisateurs.</li>
+                    <li><strong>Permettre l'intégration et les tests continus</strong> : Quand plusieurs développeurs travaillent sur des microservices, les changements de différentes équipes doivent être validés ensemble. Les environnements de test intègrent tous les microservices pour détecter les problèmes de compatibilité ou de versioning.</li>
+                    <li><strong>Protéger les données réelles et la vie privée</strong> : Les environnements de production contiennent des données utilisateurs réelles, souvent confidentielles ou réglementées (RGPD). Tester directement là pourrait exposer des informations sensibles ou supprimer accidentellement des données.</li>
+                    <li><strong>Supporter une culture de livraison continue</strong> : Les environnements multiples s'alignent parfaitement avec le processus CI/CD (CI assure que les builds sont testés automatiquement, CD promeut les builds à travers les environnements).</li>
+                </ol>
+
+                <div class="example">
+                    <strong>💡 Message clé</strong>
+                    <p>Les environnements multiples ne sont pas de la bureaucratie : ce sont des <strong>filets de sécurité</strong>. Ils protègent les utilisateurs, sauvegardent les données et permettent aux équipes d'innover en toute confiance.</p>
+                </div>
+            </section>
+
+            <!-- Section 4 -->
+            <section>
+                <h2>4. CONTINUOUS INTEGRATION (CI)</h2>
+
+                <div class="definition">
+                    <strong>💡 Qu'est-ce que la CI ?</strong>
+                    <p><strong>Continuous Integration (CI)</strong> est la pratique de construire, tester et analyser automatiquement le code chaque fois que les développeurs commitent des changements. La CI garantit que le système reste fiable en permanence.</p>
+                </div>
+
+                <div class="example">
+                    <strong>🎯 Objectif de la CI : Confiance</strong>
+                    <p>Automatiser tout pour que les développeurs puissent intégrer souvent, échouer rapidement et récupérer vite. Pensez à la CI comme un <strong>filet de sécurité</strong> — chaque fois que vous poussez du code, le système vérifie que rien ne casse avant qu'il n'atteigne les autres.</p>
+                </div>
+
+                <h3>Étapes du pipeline CI</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Étape</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>1. Code Commit</strong></td>
+                            <td>
+                                • Les développeurs poussent des changements vers un dépôt partagé (GitHub, GitLab, Bitbucket)<br>
+                                • Chaque commit ou merge déclenche automatiquement le pipeline CI
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>2. Build</strong></td>
+                            <td>
+                                • Le code source est compilé ou packagé (ex : .jar, .dll, .zip)<br>
+                                • Les dépendances sont résolues (NuGet, npm, Maven, etc.)<br>
+                                • Les scripts de build garantissent que le même processus fonctionne partout
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>3. Testing</strong></td>
+                            <td>
+                                • <strong>Tests unitaires</strong> : vérifient les fonctions ou classes individuelles<br>
+                                • <strong>Tests d'intégration</strong> : vérifient les interactions entre composants ou services<br>
+                                • <strong>Tests de régression</strong> : garantissent que les nouveaux changements n'ont pas cassé les fonctionnalités existantes
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>4. Quality Analysis</strong></td>
+                            <td>
+                                • Analyse statique automatisée du code sans l'exécuter<br>
+                                • Détecte les bugs potentiels, vulnérabilités de sécurité, duplication ou complexité<br>
+                                • Mesure la couverture de tests, maintenabilité et code smells
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>5. Artifact Storage</strong></td>
+                            <td>
+                                • Une fois validé, le build (artifact) est versionné et stocké dans un dépôt central<br>
+                                • Les artifacts stockés deviennent l'input de confiance pour les étapes de déploiement (CD)<br>
+                                • Permet le rollback ou la reproduction de n'importe quel build précédent
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 5 -->
+            <section>
+                <h2>5. CONTINUOUS DEPLOYMENT (CD)</h2>
+
+                <div class="definition">
+                    <strong>💡 Qu'est-ce que la CD ?</strong>
+                    <p><strong>Continuous Deployment (CD)</strong> est la pratique de livrer et déployer automatiquement de nouvelles versions logicielles à travers plusieurs environnements (de test à production), sans intervention manuelle. Chaque changement validé du pipeline CI peut être mis en ligne de manière sûre et cohérente.</p>
+                </div>
+
+                <div class="example">
+                    <strong>🎯 Objectif de la CD</strong>
+                    <p>Le Continuous Deployment garantit que chaque changement validé peut atteindre les utilisateurs automatiquement, en toute sécurité et de manière répétable, transformant la livraison logicielle en un <strong>flux prévisible et fiable</strong> au lieu d'un événement risqué.</p>
+                </div>
+
+                <h3>Étapes du pipeline CD</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Étape</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>1. Deploy to Test</strong></td>
+                            <td>
+                                • L'artifact produit par la CI est déployé automatiquement dans un environnement de test<br>
+                                • Tests d'intégration, API et UI automatisés s'exécutent ici<br>
+                                • Vérifie que les services interagissent correctement dans un environnement réaliste
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>2. Quality Gates</strong></td>
+                            <td>
+                                • Le système vérifie que tous les tests et seuils de qualité (performance, sécurité, conformité) passent<br>
+                                • Des approbations manuelles optionnelles peuvent être requises avant de promouvoir vers l'étape suivante
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>3. Deploy to Staging</strong></td>
+                            <td>
+                                • Staging reproduit la production le plus fidèlement possible : même infra, configurations et services<br>
+                                • Tests finaux (charge/performance, scans de sécurité, acceptance utilisateur)<br>
+                                • Confirme la préparation pour la production dans des conditions réelles
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>4. Deploy to Prod</strong></td>
+                            <td>
+                                • Le build validé est automatiquement déployé vers l'environnement de production<br>
+                                • Stratégies de déploiement pour garantir stabilité et temps d'arrêt minimal (rolling updates, blue/green, canary releases)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>5. Post-Deployment</strong></td>
+                            <td>
+                                • Health checks automatisés et smoke tests confirment que les services fonctionnent correctement<br>
+                                • Si des problèmes apparaissent, le pipeline peut déclencher un <strong>rollback automatique</strong> vers la version précédente
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 6 -->
+            <section>
+                <h2>6. STRATÉGIES DE BRANCHING</h2>
+
+                <div class="definition">
+                    <strong>💡 Qu'est-ce qu'une stratégie de branching ?</strong>
+                    <p>Une <strong>stratégie de branching</strong> définit comment les développeurs organisent, isolent et mergent leurs changements de code dans un système de contrôle de version (comme Git). Elle détermine comment les équipes collaborent, à quelle fréquence elles intègrent, et comment le code passe du développement à la production.</p>
+                </div>
+
+                <h3>Trois stratégies principales</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Stratégie</th>
+                            <th>Description</th>
+                            <th>Cas d'usage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Git Flow Workflow</strong></td>
+                            <td>Workflow structuré avec plusieurs branches long-lived (main, develop, feature, release, hotfix)</td>
+                            <td>Idéal pour équipes avec releases planifiées et versionnées. Met l'accent sur le contrôle et la stabilité plutôt que la vitesse</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Feature Branching</strong></td>
+                            <td>Approche collaborative où chaque nouvelle fonctionnalité ou bug fix est développé dans sa propre branche</td>
+                            <td>Équilibre isolation et intégration régulière via pipelines CI. Changements revus et testés via pull requests</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Trunk-Based Development</strong></td>
+                            <td>Workflow lean et moderne où les développeurs commitent de petits changements fréquents directement (ou via branches courtes) vers main</td>
+                            <td>Chaque commit déclenche le pipeline CI/CD, permettant des releases rapides et fiables</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 7 -->
+            <section>
+                <h2>7. GIT FLOW WORKFLOW</h2>
+
+                <h3>Description</h3>
+                <p>Le projet maintient <strong>deux branches permanentes</strong> :</p>
+                <ul>
+                    <li><strong>main</strong> → code de production stable</li>
+                    <li><strong>develop</strong> → branche d'intégration pour le développement en cours</li>
+                </ul>
+
+                <p>Chaque nouvelle fonctionnalité ou bug fix est développé dans une branche dédiée <code>feature/</code> ou <code>bug/</code>. Les développeurs travaillent indépendamment jusqu'à ce que la fonctionnalité soit complète.</p>
+
+                <p>Quand un ensemble de fonctionnalités est prêt pour le déploiement, une branche <code>release/</code> est créée depuis develop. La branche release est mergée dans main et taguée avec un numéro de version (v1.0), puis mergée dans develop pour synchroniser les changements post-release.</p>
+
+                <p>Si un problème critique apparaît en production, une branche <code>hotfix/</code> est créée depuis main. Une fois corrigé, c'est mergé dans main ET develop pour les garder alignés.</p>
+
+                <h3>✅ Avantages</h3>
+                <ul>
+                    <li><strong>Structuré et prévisible</strong> : Processus clair pour releases, features et bug fixes</li>
+                    <li><strong>Branche de production stable</strong> : main représente toujours du code déployable</li>
+                    <li><strong>Supporte le travail parallèle</strong> : Plusieurs équipes peuvent travailler sur différentes branches en sécurité</li>
+                    <li><strong>Discipline du contrôle de version</strong> : Tags et merges créent un historique de release transparent</li>
+                </ul>
+
+                <h3>❌ Inconvénients</h3>
+                <ul>
+                    <li><strong>Workflow lourd</strong> : Trop de branches → intégration et livraison plus lentes</li>
+                    <li><strong>Overhead de merge élevé</strong> : Opérations de merge fréquentes augmentent la maintenance</li>
+                    <li><strong>Complexe pour petites équipes</strong> : Trop pour des environnements agiles ou basés microservices</li>
+                    <li><strong>Considéré legacy</strong> : Bien que toujours largement utilisé, ce workflow est considéré comme legacy en raison de sa complexité</li>
+                </ul>
+            </section>
+
+            <!-- Section 8 -->
+            <section>
+                <h2>8. FEATURE BRANCHING</h2>
+
+                <h3>Description</h3>
+                <p>Les développeurs créent une nouvelle branche pour chaque fonctionnalité, bug fix ou amélioration. Convention : <code>feature/feature-name</code> (ex : <code>feature/login-page</code>).</p>
+
+                <p>Le travail se fait en isolation ; les développeurs peuvent commiter et tester les changements librement. La branche feature est régulièrement synchronisée avec main ou develop pour rester à jour.</p>
+
+                <p>Quand la fonctionnalité est complète, la branche est poussée vers le dépôt partagé. Une <strong>Pull Request (PR)</strong> est créée pour revue par les pairs. Le code est revu, discuté et approuvé. Les tests CI doivent passer avant le merge dans main ou develop. Après le merge, la branche feature est supprimée pour garder le repo propre.</p>
+
+                <h3>✅ Avantages</h3>
+                <ul>
+                    <li><strong>Isolation</strong> : Chaque feature est indépendante — risque minimal de casser le code main</li>
+                    <li><strong>Supporte la revue de code</strong> : Les pull requests encouragent la collaboration et le partage de connaissance</li>
+                    <li><strong>Intégration CI</strong> : Chaque branche peut déclencher des pipelines de build/test automatisés</li>
+                    <li><strong>Simple et intuitif</strong> : Facile à comprendre pour les nouveaux développeurs</li>
+                </ul>
+
+                <h3>❌ Inconvénients</h3>
+                <ul>
+                    <li><strong>Conflits de merge</strong> : Si les branches vivent trop longtemps, l'intégration peut être douloureuse</li>
+                    <li><strong>Intégration retardée</strong> : Risque de merges "big bang" si les développeurs ne rebase pas souvent</li>
+                    <li><strong>Feedback plus lent</strong> : Problèmes découverts tard dans le processus de merge</li>
+                    <li><strong>Requiert de la discipline</strong> : Les équipes doivent commiter et merger fréquemment pour éviter la dérive</li>
+                </ul>
+            </section>
+
+            <!-- Section 9 -->
+            <section>
+                <h2>9. TRUNK-BASED DEVELOPMENT</h2>
+
+                <h3>Description</h3>
+                <p>Le dépôt maintient <strong>une branche principale</strong>, souvent appelée <code>main</code> ou <code>master</code>. Tout le code prêt pour la production vit ici. Il n'y a pas de branches feature long-lived.</p>
+
+                <p>Les développeurs peuvent créer une branche temporaire pour un petit changement. Ces branches vivent seulement quelques heures ou une journée, et sont mergées rapidement.</p>
+
+                <p>Tout le monde commite directement (ou merge) dans main plusieurs fois par jour. Chaque commit déclenche le pipeline CI. Tout build échoué arrête les merges suivants jusqu'à correction.</p>
+
+                <p>Les fonctionnalités non terminées sont cachées derrière des <strong>feature flags/toggles</strong>. Le code peut être mergé en sécurité même s'il n'est pas encore visible par les utilisateurs. Cela évite les branches long-running tout en gardant la production stable.</p>
+
+                <h3>✅ Avantages</h3>
+                <ul>
+                    <li><strong>Vraie intégration continue</strong> : Chaque commit est validé et intégré immédiatement</li>
+                    <li><strong>Livraison rapide</strong> : Permet le déploiement en temps réel et feedback rapide</li>
+                    <li><strong>Conflits de merge réduits</strong> : Merges fréquents = moins de maux de tête d'intégration</li>
+                    <li><strong>Modèle de branching simple</strong> : Complexité Git minimale ; facile à visualiser et gérer</li>
+                </ul>
+
+                <h3>❌ Inconvénients</h3>
+                <ul>
+                    <li><strong>Requiert une CI/CD forte</strong> : Doit avoir des builds et tests automatisés fiables pour prévenir les casses</li>
+                    <li><strong>Discipline plus élevée nécessaire</strong> : De mauvais commits peuvent casser la branche main rapidement</li>
+                    <li><strong>Les Feature Toggles ajoutent de la complexité</strong> : Gérer les flags et les chemins de code toggles peut devenir compliqué</li>
+                    <li><strong>Moins d'isolation</strong> : Plus risqué pour les fonctionnalités expérimentales ou long-running</li>
+                </ul>
+            </section>
+
+            <!-- Section 10 -->
+            <section>
+                <h2>10. COMPARAISON DES STRATÉGIES</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Critère</th>
+                            <th>Git Flow</th>
+                            <th>Feature Branching</th>
+                            <th>Trunk-Based</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Fréquence d'intégration</strong></td>
+                            <td>Faible : intégration après features ou releases complètes</td>
+                            <td>Moyenne : code mergé après chaque feature complète</td>
+                            <td>Élevée : intégrations fréquentes plusieurs fois par jour</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Durée de vie des branches</strong></td>
+                            <td>Longue : semaines ou mois pour develop/release</td>
+                            <td>Courte : quelques jours</td>
+                            <td>Très courte : heures ou commits directs vers main</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Complexité</strong></td>
+                            <td>Élevée : nombreuses branches, merges fréquents, overhead</td>
+                            <td>Modérée : structure gérable, coordination de merge</td>
+                            <td>Faible : branching minimal, processus simple, repose sur l'automatisation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Coordination d'équipe</strong></td>
+                            <td>Structurée : ownership clair mais collaboration plus lente</td>
+                            <td>Collaborative : équipes travaillent indépendamment avec revues régulières</td>
+                            <td>Hautement collaborative : communication constante, ownership partagé</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cas d'usage typique</strong></td>
+                            <td>Projets enterprise : releases planifiées, versions multiples</td>
+                            <td>Équipes CI standard : livraison régulière de features et revues</td>
+                            <td>DevOps / Microservices : intégration et déploiement continus</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>💡 En résumé</strong>
+                    <p>De <strong>structuré et stable</strong> (Git Flow) à <strong>collaboratif</strong> (Feature Branching) et finalement <strong>continu</strong> (Trunk-Based) — chaque stratégie convient à un niveau différent d'automatisation et de maturité d'équipe.</p>
+                </div>
+            </section>
+
+            <!-- Section 11 -->
+            <section>
+                <h2>11. SÉCURITÉ - ENJEUX</h2>
+
+                <p><strong>📌 Nouveaux défis de sécurité en microservices</strong></p>
+                <p>Une architecture microservices introduit des défis de sécurité spécifiques par rapport à un monolithe :</p>
+
+                <ul>
+                    <li><strong>Multiplication des points d'entrée</strong> : Chaque service expose potentiellement une API</li>
+                    <li><strong>Risque accru de failles entre services</strong> : Communication inter-services peut être interceptée</li>
+                    <li><strong>Gestion des identités et droits</strong> : Complexité de gérer qui peut faire quoi</li>
+                </ul>
+
+                <div class="definition">
+                    <strong>💡 Authentification vs Autorisation</strong>
+                    <p><strong>Authentification</strong> = Vérifier l'identité → "Qui suis-je ?"</p>
+                    <p><strong>Autorisation</strong> = Vérifier les droits → "Ai-je le droit ?"</p>
+                </div>
+            </section>
+
+            <!-- Section 12 -->
+            <section>
+                <h2>12. AUTHENTIFICATION</h2>
+
+                <p><strong>📌 Principe</strong></p>
+                <p>L'authentification consiste à vérifier l'identité d'un utilisateur ou d'un service. Plusieurs approches existent :</p>
+
+                <h3>Services internes</h3>
+                <ul>
+                    <li><strong>Custom (JWT)</strong> : Génération de tokens JSON Web Token pour authentifier les requêtes</li>
+                    <li><strong>Annuaire d'identité</strong> : Active Directory, LDAP pour centraliser les utilisateurs</li>
+                </ul>
+
+                <h3>Services externes</h3>
+                <ul>
+                    <li><strong>SAML</strong> : Security Assertion Markup Language pour SSO (Single Sign-On)</li>
+                    <li><strong>OAuth/OpenID Connect</strong> : Protocoles modernes pour déléguer l'authentification (ex: "Se connecter avec Google")</li>
+                </ul>
+
+                <h3>Service pont/rassembleur</h3>
+                <ul>
+                    <li><strong>Stockage des identités</strong> : Base centralisée des utilisateurs</li>
+                    <li><strong>Vérification de connexion et génération de JWT</strong> : Service qui valide les credentials et émet des tokens</li>
+                </ul>
+
+                <div class="example">
+                    <strong>🔍 Exemple de flux JWT</strong>
+                    <p>1. L'utilisateur envoie username/password à l'API Gateway</p>
+                    <p>2. Gateway transmet au Service d'Authentification</p>
+                    <p>3. Service d'Authentification vérifie les credentials</p>
+                    <p>4. Si valide, génère un JWT signé</p>
+                    <p>5. JWT est renvoyé au client</p>
+                    <p>6. Client inclut le JWT dans toutes les requêtes suivantes</p>
+                </div>
+            </section>
+
+            <!-- Section 13 -->
+            <section>
+                <h2>13. AUTORISATION</h2>
+
+                <h3>Role-Based Access Control (RBAC)</h3>
+                <p>Le <strong>RBAC</strong> définit des rôles dans le service d'authentification. La décision d'effectuer une action se fait en fonction du <strong>rôle</strong> de l'utilisateur.</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Approche</th>
+                            <th>Description</th>
+                            <th>Avantages</th>
+                            <th>Inconvénients</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>RBAC Décentralisé</strong></td>
+                            <td>Au sein de chaque service</td>
+                            <td>Plus simple à mettre en place</td>
+                            <td>Duplication de logique, moins de visibilité globale</td>
+                        </tr>
+                        <tr>
+                            <td><strong>RBAC Centralisé</strong></td>
+                            <td>Dans le gateway</td>
+                            <td>Meilleure vision de sécurité, pas besoin de transférer l'identification de l'utilisateur</td>
+                            <td>Gateway devient point critique</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Attribute-Based Access Control (ABAC)</h3>
+                <p>Le <strong>ABAC</strong> est plus dynamique et flexible que RBAC. La décision d'autorisation est une fonction de plusieurs attributs :</p>
+
+                <p><strong>Décision = f(sujet, ressource, action, contexte, ...)</strong></p>
+
+                <h3>Composants ABAC</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Composant</th>
+                            <th>Rôle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>PEP</strong> (Policy Enforcement Point)</td>
+                            <td>Point d'application de la décision (souvent Gateway)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PIP</strong> (Policy Information Point)</td>
+                            <td>Source des attributs (service d'authentification)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PDP</strong> (Policy Decision Point)</td>
+                            <td>Moteur de décision qui évalue les politiques</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PRP</strong> (Policy Repository Point)</td>
+                            <td>Stockage des politiques de sécurité</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <strong>🔍 Exemple ABAC</strong>
+                    <p>Politique : "Un employé peut modifier un document si :</p>
+                    <ul>
+                        <li>Il en est l'auteur OU</li>
+                        <li>Il est manager du département concerné ET</li>
+                        <li>Le document n'est pas verrouillé ET</li>
+                        <li>L'accès se fait pendant les heures de bureau"</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 14 -->
+            <section>
+                <h2>14. SÉCURITÉ RÉSEAU</h2>
+
+                <h3>Risques de sécurité</h3>
+                <p><strong>Principe fondamental</strong> : N'importe quelle application est vulnérable. Chaque point d'entrée supplémentaire est un risque → Il faut <strong>limiter les points d'entrée</strong>.</p>
+
+                <h3>Firewall</h3>
+                <p>Un <strong>firewall</strong> est une configuration réseau bloquant certaines requêtes. Plusieurs emplacements possibles :</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Emplacement</th>
+                            <th>Attaque externe</th>
+                            <th>Mouvement latéral</th>
+                            <th>Egress control</th>
+                            <th>Complexité</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>User ↔ Gateway</strong></td>
+                            <td>Protégé</td>
+                            <td>Vulnérable</td>
+                            <td>Vulnérable</td>
+                            <td>Faible</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gateway ↔ Services</strong></td>
+                            <td>Vulnérable</td>
+                            <td>Protégé</td>
+                            <td>Protégé</td>
+                            <td>Moyenne</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DMZ</strong></td>
+                            <td>Protégé</td>
+                            <td>Protégé</td>
+                            <td>Protégé</td>
+                            <td>Haute</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Problèmes spécifiques</h3>
+                <ul>
+                    <li><strong>Gateway compromis</strong> : Si le gateway est compromis, l'entièreté de l'architecture tombe avec</li>
+                    <li><strong>Sorties non contrôlées</strong> : Exfiltration de données facile si pas de contrôle egress</li>
+                    <li><strong>Service gateway sans protection</strong> : Risque de DDoS (Distributed Denial of Service)</li>
+                </ul>
+
+                <h3>DMZ (DeMilitarized Zone)</h3>
+                <p>Une <strong>DMZ</strong> est une zone réseau isolée entre internet et le réseau interne :</p>
+                <ul>
+                    <li><strong>Protection plus complète</strong> : Isolation en couches</li>
+                    <li><strong>Mise en œuvre plus complexe</strong> : Nécessite configuration avancée</li>
+                </ul>
+            </section>
+
+            <!-- Section 15 -->
+            <section>
+                <h2>15. ZERO TRUST NETWORK</h2>
+
+                <div class="definition">
+                    <strong>💡 Principe Zero Trust</strong>
+                    <p><strong>Avant</strong> : Le réseau interne était considéré comme "fiable" par défaut</p>
+                    <p><strong>Maintenant</strong> : Aucun réseau n'est fiable → vérifier tout le temps</p>
+                </div>
+
+                <h3>Composants du Zero Trust</h3>
+                <ul>
+                    <li><strong>Vérifications sur chaque service</strong> : Authentification et autorisation à chaque appel</li>
+                    <li><strong>Communications encryptées</strong> : Toutes les communications service-à-service sont chiffrées</li>
+                    <li><strong>Mutual TLS (mTLS)</strong> : Les deux parties s'échangent leurs certificats pour s'authentifier mutuellement</li>
+                </ul>
+
+                <div class="example">
+                    <strong>🔍 Protection contre Man-in-the-Middle</strong>
+                    <p>Avec mTLS, même si un attaquant intercepte la communication entre deux services, il ne peut pas se faire passer pour l'un d'eux car il n'a pas le certificat valide.</p>
+                </div>
+
+                <h3>✅ Avantages Zero Trust</h3>
+                <ul>
+                    <li>Protection en profondeur (defense in depth)</li>
+                    <li>Limite les dégâts en cas de compromission d'un service</li>
+                    <li>Aligné avec les standards de sécurité modernes</li>
+                </ul>
+
+                <h3>❌ Défis Zero Trust</h3>
+                <ul>
+                    <li>Complexité de mise en œuvre</li>
+                    <li>Overhead de performance (chiffrement/déchiffrement)</li>
+                    <li>Gestion des certificats et rotation</li>
+                </ul>
+            </section>
+
+            <!-- Section 16 -->
+            <section>
+                <h2>16. SIEM - SURVEILLANCE DE SÉCURITÉ</h2>
+
+                <div class="definition">
+                    <strong>💡 SIEM - Security Information and Event Management</strong>
+                    <p>Un <strong>SIEM</strong> est un système qui centralise les logs de tous les services pour détecter les menaces de sécurité.</p>
+                </div>
+
+                <h3>Fonctionnalités principales</h3>
+                <ul>
+                    <li><strong>Centralisation des logs</strong> : Collecte des logs de tous les services en un seul endroit</li>
+                    <li><strong>Analyse automatisée</strong> : Détection de patterns anormaux</li>
+                    <li><strong>Recherche de corrélations</strong> : Relier des événements séparés pour détecter des attaques complexes</li>
+                    <li><strong>Alerte en cas d'anomalie</strong> : Notification en temps réel des incidents de sécurité</li>
+                </ul>
+
+                <h3>Difficultés du SIEM</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Difficulté</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Volume</strong></td>
+                            <td>Des millions de logs par jour dans une architecture microservices</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bruit</strong></td>
+                            <td>Beaucoup d'événements normaux qui ressemblent à des anomalies</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Faux-positifs</strong></td>
+                            <td>Alertes déclenchées pour des événements normaux</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Solutions SIEM populaires</h3>
+                <ul>
+                    <li><strong>Wazuh</strong> : Open source, gratuit</li>
+                    <li><strong>Elastic Security</strong> : Basé sur Elasticsearch</li>
+                    <li><strong>IBM QRadar</strong> : Solution enterprise</li>
+                    <li><strong>Splunk</strong> : Très puissant mais coûteux</li>
+                </ul>
+
+                <div class="example">
+                    <strong>🔍 Exemple d'alerte SIEM</strong>
+                    <p>Le SIEM détecte :</p>
+                    <ul>
+                        <li>10 tentatives de login échouées depuis la même IP en 2 minutes (Event 1)</li>
+                        <li>Puis un login réussi depuis cette IP (Event 2)</li>
+                        <li>Puis des requêtes inhabituelles vers la base de données (Event 3)</li>
+                    </ul>
+                    <p><strong>Corrélation</strong> → Alerte : "Tentative de brute force suivie d'exfiltration de données"</p>
+                </div>
+            </section>
+
+            <!-- Section 17 -->
+            <section>
+                <h2>17. RÉSUMÉ DE LA WEEK 6</h2>
+
+                <h3>✅ Ce que nous avons appris</h3>
+                
+                <h3>Partie Déploiement</h3>
+                <ul>
+                    <li>La livraison (delivery) est au cœur de l'ingénierie logicielle moderne</li>
+                    <li>Les <strong>environnements</strong> (DEV, TEST, STAGING, PROD) permettent une progression sûre</li>
+                    <li>Les pipelines <strong>CI/CD</strong> automatisent le chemin vers la production</li>
+                    <li>Les <strong>stratégies de branching</strong> (Git Flow, Feature Branching, Trunk-Based) façonnent la collaboration et la vitesse de livraison</li>
+                </ul>
+
+                <h3>Partie Sécurité</h3>
+                <ul>
+                    <li><strong>Authentification</strong> (Qui suis-je ?) vs <strong>Autorisation</strong> (Ai-je le droit ?)</li>
+                    <li><strong>RBAC</strong> (Role-Based) pour des politiques simples basées sur les rôles</li>
+                    <li><strong>ABAC</strong> (Attribute-Based) pour des politiques dynamiques et contextuelles</li>
+                    <li><strong>Sécurité réseau</strong> : Firewall, DMZ, Zero Trust Network</li>
+                    <li><strong>SIEM</strong> pour centraliser les logs et détecter les menaces</li>
+                </ul>
+
+                <div class="definition">
+                    <strong>💡 Messages clés</strong>
+                    <p><strong>Déploiement</strong> : L'automatisation et les contrôles qualité sont essentiels pour livrer rapidement et en toute sécurité</p>
+                    <p><strong>Sécurité</strong> : Dans une architecture microservices, la sécurité doit être pensée à tous les niveaux : authentification, autorisation, réseau et surveillance</p>
+                </div>
+            </section>
+
+            <div class="back-btn">
+                <a href="index.html" class="btn">← Retour à l'accueil</a>
+            </div>
+        </main>
+
+        <footer>
+            <p>BINV3140 - Microservices | 2025-2026</p>
+            <p>Choquet Olivier, Miri Tarik, Strebelle Sébastien</p>
+        </footer>
+    </div>
+</body>
+</html>

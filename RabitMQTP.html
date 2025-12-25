@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RabbitMQ - Communication Asynchrone</title>
+    <link rel="stylesheet" href="content-style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐰 RABBITMQ</h1>
+            <p class="subtitle">Communication Asynchrone pour Microservices</p>
+            <p class="subtitle">Guide Complet avec Exemples de Code</p>
+            <p>Lien GitHub Correction, lancer chaque fichier séparément : 
+                <a href="https://github.com/DanielMarica/rabbit-mq-micro-services" target="_blank">cliquer ici →</a>
+            </p></header>
+
+        <nav class="back-btn">
+            <a href="index.html" class="btn">← Retour au Menu Principal</a>
+        </nav>
+
+        <main>
+            <!-- SECTION 1: INTRODUCTION -->
+            <section id="introduction">
+                <h2>## 1. QU'EST-CE QUE RABBITMQ ?</h2>
+                
+                <div class="definition">
+                    <strong>📌 Définition</strong>
+                    <p>RabbitMQ est un <strong>message broker</strong> (courtier de messages) qui permet à des services de communiquer de manière asynchrone. Au lieu d'appeler directement un autre service et d'attendre sa réponse, un service publie un message dans RabbitMQ, qui le distribue aux services intéressés.</p>
+                </div>
+
+                <h3>### L'Analogie du Restaurant 🍽️</h3>
+                
+                <img src="RabbitExplicationRestaurant.png" alt="Analogie Restaurant RabbitMQ" style="width:100%; margin:20px 0; border: 2px solid #000;">
+
+                <div class="example">
+                    <strong>💡 Comprendre avec un Restaurant</strong>
+                    <p><strong>Phase 1 : La Prise de commande</strong></p>
+                    <ol>
+                        <li>Client commande: "Je veux un Steak"</li>
+                        <li>Serveur note la commande (status: PENDING)</li>
+                        <li>Serveur accroche le ticket au "passe-plat" (RabbitMQ)</li>
+                        <li>Client est libre de faire autre chose</li>
+                    </ol>
+
+                    <p><strong>Phase 2 : En cuisine (Asynchrone)</strong></p>
+                    <ol start="5">
+                        <li>Le cuisinier prend le ticket du passe-plat</li>
+                        <li>Il vérifie le frigo (stock)</li>
+                        <li>Il pose un mot "C'est prêt!" ou "Y'en a plus"</li>
+                    </ol>
+
+                    <p><strong>Phase 3 : La Mise à jour</strong></p>
+                    <ol start="8">
+                        <li>Le serveur lit la réponse du cuisinier</li>
+                        <li>Si stock OK → Commande CONFIRMED</li>
+                        <li>Si plus de stock → Commande CANCELLED</li>
+                    </ol>
+                </div>
+
+                <h3>### Les Acteurs Principaux</h3>
+                
+                <table>
+                    <tr>
+                        <th>Acteur</th>
+                        <th>Dans le Restaurant</th>
+                        <th>Dans votre Code</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Producer (Producteur)</strong></td>
+                        <td>Le serveur qui accroche les tickets</td>
+                        <td>Order Service qui publie OrderCreatedEvent</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Queue (File d'attente)</strong></td>
+                        <td>Le passe-plat où s'accumulent les tickets</td>
+                        <td>order.created.queue</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Consumer (Consommateur)</strong></td>
+                        <td>Le cuisinier qui prend les tickets</td>
+                        <td>Product Service qui écoute les commandes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Exchange</strong></td>
+                        <td>Le système de dispatch (quel ticket va où)</td>
+                        <td>order.exchange</td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- SECTION 2: ÉTAPE 1 - PARLER (PUBLIER) -->
+            <section id="etape1-parler">
+                <h2>## 2. ÉTAPE 1 : PARLER (PUBLIER UN MESSAGE) 📤</h2>
+
+                <img src="parler.png" alt="Schéma Publication Message" style="width:100%; margin:20px 0; border: 2px solid #000;">
+
+                <div class="definition">
+                    <strong>📌 Objectif</strong>
+                    <p>Order Service crée une commande et publie un événement <strong>OrderCreatedEvent</strong> dans RabbitMQ pour informer Product Service.</p>
+                </div>
+
+                <h3>### Flux Détaillé</h3>
+                <ol>
+                    <li>Client envoie POST /orders (JSON)</li>
+                    <li>OrderController appelle createOrder()</li>
+                    <li>OrderService sauvegarde la commande (status: PENDING)</li>
+                    <li>OrderService crée un OrderCreatedEvent</li>
+                    <li>OrderEventPublisher envoie l'événement via RabbitTemplate</li>
+                    <li>RabbitMQ reçoit le message dans order.exchange</li>
+                    <li>Client reçoit HTTP 200 OK (ne bloque pas!)</li>
+                </ol>
+
+                <h3>### 1.1 Créer l'Événement (DTO)</h3>
+                <p>Fichier: <code>OrderCreatedEvent.java</code> (order-service)</p>
+                <pre><code>package com.example.order_service.messaging.events;
+
+public class OrderCreatedEvent {
+    private Long orderId;
+    private Long productId;
+    private Integer quantity;
+    private Long customerId;
+
+    // Constructeur vide (requis pour JSON)
+    public OrderCreatedEvent() {}
+
+    // Constructeur avec paramètres
+    public OrderCreatedEvent(Long orderId, Long productId, 
+                             Integer quantity, Long customerId) {
+        this.orderId = orderId;
+        this.productId = productId;
+        this.quantity = quantity;
+        this.customerId = customerId;
+    }
+
+    // Getters et Setters
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
+    
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+    
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
+}</code></pre>
+
+                <h3>### 1.2 Configurer RabbitMQ</h3>
+                <p>Fichier: <code>RabbitMQConfig.java</code> (order-service)</p>
+                <pre><code>@Configuration
+public class RabbitMQConfig {
+    // Constantes
+    public static final String ORDER_EXCHANGE = "order.exchange";
+    public static final String ORDER_ROUTING_KEY = "order.created";
+    public static final String ORDER_QUEUE = "order.created.queue";
+
+    // ⭐ Convertir les objets Java en JSON
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new JacksonJsonMessageConverter();
+    }
+
+    // ⭐ Template pour envoyer des messages
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory factory) {
+        RabbitTemplate template = new RabbitTemplate(factory);
+        template.setMessageConverter(jsonMessageConverter());
+        return template;
+    }
+
+    // Créer l'Exchange (routeur de messages)
+    @Bean
+    public TopicExchange orderExchange() {
+        return new TopicExchange(ORDER_EXCHANGE);
+    }
+
+    // Créer la Queue (file d'attente)
+    @Bean
+    public Queue orderQueue() {
+        return new Queue(ORDER_QUEUE, true); // durable = true
+    }
+
+    // Lier la Queue à l'Exchange
+    @Bean
+    public Binding orderBinding(Queue orderQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(orderQueue)
+            .to(orderExchange)
+            .with(ORDER_ROUTING_KEY);
+    }
+}</code></pre>
+
+                <h3>### 1.3 Publier l'Événement</h3>
+                <p>Fichier: <code>OrderEventPublisher.java</code> (order-service)</p>
+                <pre><code>@Service
+public class OrderEventPublisher {
+    
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    public void publishOrderCreated(OrderCreatedEvent event) {
+        System.out.println("📤 Publishing: " + event);
+        
+        // ⭐ Envoyer le message à RabbitMQ
+        rabbitTemplate.convertAndSend(
+            RabbitMQConfig.ORDER_EXCHANGE,    // Vers quel exchange
+            RabbitMQConfig.ORDER_ROUTING_KEY, // Avec quelle clé
+            event                              // Le message
+        );
+        
+        System.out.println("✅ Message published!");
+    }
+}</code></pre>
+
+                <div class="example">
+                    <strong>💡 Ce qui se passe en coulisses</strong>
+                    <ol>
+                        <li><strong>JacksonJsonMessageConverter</strong> convertit OrderCreatedEvent en JSON</li>
+                        <li><strong>RabbitTemplate</strong> envoie le JSON à l'exchange "order.exchange"</li>
+                        <li>L'exchange utilise la routing key "order.created" pour trouver la bonne queue</li>
+                        <li>Le message est stocké dans "order.created.queue"</li>
+                        <li>Order Service continue sans attendre!</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- SECTION 3: ÉTAPE 2 - ÉCOUTER (CONSOMMER) -->
+            <section id="etape2-ecouter">
+                <h2>## 3. ÉTAPE 2 : ÉCOUTER (CONSOMMER UN MESSAGE) 👂</h2>
+
+                <img src="ecouter.png" alt="Schéma Consommation Message" style="width:100%; margin:20px 0; border: 2px solid #000;">
+
+                <div class="definition">
+                    <strong>📌 Objectif</strong>
+                    <p>Product Service écoute la queue RabbitMQ, reçoit OrderCreatedEvent, vérifie le stock et répond avec StockReservedEvent ou StockRejectedEvent.</p>
+                </div>
+
+                <h3>### Flux Détaillé</h3>
+                <ol>
+                    <li>RabbitMQ a un message dans stock.response.queue</li>
+                    <li>@RabbitListener détecte le message</li>
+                    <li>JacksonJsonMessageConverter désérialise le JSON en objet Java</li>
+                    <li>Selon le type: cast en StockReservedEvent ou StockRejectedEvent</li>
+                    <li>OrderResponseListener appelle updateOrderStatus()</li>
+                    <li>OrderService met à jour le statut (CONFIRMED ou REJECTED)</li>
+                    <li>Le message est acquitté (supprimé de la queue)</li>
+                </ol>
+
+                <h3>### 2.1 Créer le Listener</h3>
+                <p>Fichier: <code>OrderEventListener.java</code> (product-service)</p>
+                <pre><code>@Component
+public class OrderEventListener {
+    
+    @Autowired
+    private ProductService productService;
+    
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    // ⭐ Écouter la queue "order.created.queue"
+    @RabbitListener(queues = RabbitMQConfig.ORDER_QUEUE)
+    public void handleOrderCreated(OrderCreatedEvent event) {
+        System.out.println("📦 Received: " + event);
+        
+        // Vérifier et réserver le stock
+        boolean reserved = productService.reserveStock(
+            event.getProductId(), 
+            event.getQuantity()
+        );
+        
+        if (reserved) {
+            // ✅ Stock OK - Envoyer confirmation
+            StockReservedEvent response = new StockReservedEvent(
+                event.getOrderId(),
+                event.getProductId(),
+                event.getQuantity()
+            );
+            
+            rabbitTemplate.convertAndSend(
+                RabbitMQConfig.STOCK_EXCHANGE,
+                RabbitMQConfig.STOCK_RESERVED_KEY,
+                response
+            );
+            
+            System.out.println("✅ Stock reserved!");
+        } else {
+            // ❌ Stock insuffisant - Envoyer rejet
+            StockRejectedEvent response = new StockRejectedEvent(
+                event.getOrderId(),
+                event.getProductId(),
+                event.getQuantity(),
+                "Insufficient stock"
+            );
+            
+            rabbitTemplate.convertAndSend(
+                RabbitMQConfig.STOCK_EXCHANGE,
+                RabbitMQConfig.STOCK_REJECTED_KEY,
+                response
+            );
+            
+            System.out.println("❌ Stock rejected!");
+        }
+    }
+}</code></pre>
+
+                <div class="example">
+                    <strong>💡 Comment @RabbitListener fonctionne</strong>
+                    <ol>
+                        <li>Spring Boot crée un <strong>container</strong> qui surveille la queue</li>
+                        <li>Dès qu'un message arrive, le container le récupère</li>
+                        <li>Le message JSON est converti en OrderCreatedEvent</li>
+                        <li>La méthode handleOrderCreated() est appelée automatiquement</li>
+                        <li>Si aucune exception → message supprimé de la queue</li>
+                        <li>Si exception → message remis dans la queue (retry)</li>
+                    </ol>
+                </div>
+
+                <h3>### 2.2 Vérifier le Stock</h3>
+                <p>Fichier: <code>ProductService.java</code> (product-service)</p>
+                <pre><code>@Service
+public class ProductService {
+    
+    @Autowired
+    private ProductRepository productRepository;
+
+    public boolean reserveStock(Long productId, Integer quantity) {
+        try {
+            Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+            
+            // Vérifier si stock suffisant
+            if (product.getStock() < quantity) {
+                return false; // ❌ Pas assez de stock
+            }
+            
+            // Réduire le stock
+            product.setStock(product.getStock() - quantity);
+            productRepository.save(product);
+            
+            System.out.println("✅ Reserved: " + quantity + " units");
+            return true; // ✅ Réservation réussie
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error: " + e.getMessage());
+            return false;
+        }
+    }
+}</code></pre>
+            </section>
+
+            <!-- SECTION 4: ÉTAPE 3 - COMMUNIQUER EN BOUCLE -->
+            <section id="etape3-communication">
+                <h2>## 4. ÉTAPE 3 : COMMUNICATION BIDIRECTIONNELLE 🔄</h2>
+
+                <img src="RabbitEtCommunicationVue.png" alt="Vue d'ensemble Communication" style="width:100%; margin:20px 0; border: 2px solid #000;">
+
+                <div class="definition">
+                    <strong>📌 Concept Clé</strong>
+                    <p>Order Service et Product Service communiquent dans les deux sens via des <strong>queues séparées</strong>. Order Service publie dans une queue, Product Service répond dans une autre queue qu'Order Service écoute.</p>
+                </div>
+
+                <h3>### Architecture Complète</h3>
+                <ol>
+                    <li><strong>Client → API Gateway → Order Service</strong>
+                        <ul>
+                            <li>POST /orders crée la commande</li>
+                        </ul>
+                    </li>
+                    <li><strong>Order Service → RabbitMQ (Queue: Order Created)</strong>
+                        <ul>
+                            <li>Publie OrderCreatedEvent</li>
+                        </ul>
+                    </li>
+                    <li><strong>RabbitMQ → Product Service</strong>
+                        <ul>
+                            <li>Product Service lit OrderCreatedEvent</li>
+                        </ul>
+                    </li>
+                    <li><strong>Product Service → Base de données</strong>
+                        <ul>
+                            <li>Vérifie et réserve le stock</li>
+                        </ul>
+                    </li>
+                    <li><strong>Product Service → RabbitMQ (Queue: Stock Response)</strong>
+                        <ul>
+                            <li>Publie StockReservedEvent ou StockRejectedEvent</li>
+                        </ul>
+                    </li>
+                    <li><strong>RabbitMQ → Order Service</strong>
+                        <ul>
+                            <li>Order Service lit la réponse</li>
+                        </ul>
+                    </li>
+                    <li><strong>Order Service → Base de données</strong>
+                        <ul>
+                            <li>Met à jour le statut: CONFIRMED ou REJECTED</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>### 3.1 Créer les Événements de Réponse</h3>
+                <p><strong>StockReservedEvent.java</strong> (product-service ET order-service)</p>
+                <pre><code>public class StockReservedEvent {
+    private Long orderId;
+    private Long productId;
+    private Integer quantity;
+
+    // Constructeurs, getters, setters...
+}</code></pre>
+
+                <p><strong>StockRejectedEvent.java</strong> (product-service ET order-service)</p>
+                <pre><code>public class StockRejectedEvent {
+    private Long orderId;
+    private Long productId;
+    private Integer quantity;
+    private String reason;
+
+    // Constructeurs, getters, setters...
+}</code></pre>
+
+                <h3>### 3.2 Écouter les Réponses (Order Service)</h3>
+                <p>Fichier: <code>StockEventListener.java</code> (order-service)</p>
+                <pre><code>@Component
+public class StockEventListener {
+    
+    @Autowired
+    private OrderRepository orderRepository;
+
+    // ⭐ Écouter queue stock.reserved.queue
+    @RabbitListener(queues = "stock.reserved.queue")
+    public void handleStockReserved(StockReservedEvent event) {
+        System.out.println("📥 Received: " + event);
+        
+        Order order = orderRepository.findById(event.getOrderId())
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        // Mettre à jour: PENDING → CONFIRMED
+        order.setStatus("CONFIRMED");
+        orderRepository.save(order);
+        
+        System.out.println("✅ Order " + event.getOrderId() + " CONFIRMED");
+    }
+
+    // ⭐ Écouter queue stock.rejected.queue
+    @RabbitListener(queues = "stock.rejected.queue")
+    public void handleStockRejected(StockRejectedEvent event) {
+        System.out.println("📥 Received: " + event);
+        
+        Order order = orderRepository.findById(event.getOrderId())
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        // Mettre à jour: PENDING → REJECTED
+        order.setStatus("REJECTED");
+        orderRepository.save(order);
+        
+        System.out.println("❌ Order " + event.getOrderId() + " REJECTED");
+    }
+}</code></pre>
+
+                <div class="example">
+                    <strong>💡 Pourquoi 2 Queues Séparées?</strong>
+                    <p>Si on utilisait une seule queue "stock.response.queue", RabbitMQ distribuerait les messages aléatoirement entre handleStockReserved() et handleStockRejected(), ce qui causerait des erreurs!</p>
+                    <p><strong>Solution:</strong> Créer 2 queues distinctes avec des routing keys différentes:</p>
+                    <ul>
+                        <li><strong>stock.reserved</strong> → stock.reserved.queue</li>
+                        <li><strong>stock.rejected</strong> → stock.rejected.queue</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SECTION 5: ÉTAPE 4 - CONFIGURATION COMPLÈTE -->
+            <section id="etape4-configuration">
+                <h2>## 5. ÉTAPE 4 : CONFIGURATION COMPLÈTE DES 2 SERVICES</h2>
+
+                <div class="definition">
+                    <strong>📌 Important</strong>
+                    <p>Les DEUX services (order-service et product-service) doivent avoir la même configuration RabbitMQ pour communiquer correctement.</p>
+                </div>
+
+                <h3>### Configuration RabbitMQ (Les 2 Services)</h3>
+                <pre><code>@Configuration
+public class RabbitMQConfig {
+    // Queues
+    public static final String ORDER_QUEUE = "order.created.queue";
+    public static final String STOCK_RESERVED_QUEUE = "stock.reserved.queue";
+    public static final String STOCK_REJECTED_QUEUE = "stock.rejected.queue";
+    
+    // Exchanges
+    public static final String ORDER_EXCHANGE = "order.exchange";
+    public static final String STOCK_EXCHANGE = "stock.exchange";
+    
+    // Routing Keys
+    public static final String ORDER_ROUTING_KEY = "order.created";
+    public static final String STOCK_RESERVED_KEY = "stock.reserved";
+    public static final String STOCK_REJECTED_KEY = "stock.rejected";
+
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new JacksonJsonMessageConverter();
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory factory) {
+        RabbitTemplate template = new RabbitTemplate(factory);
+        template.setMessageConverter(jsonMessageConverter());
+        return template;
+    }
+
+    // === ORDER EXCHANGE & QUEUE ===
+    @Bean
+    public TopicExchange orderExchange() {
+        return new TopicExchange(ORDER_EXCHANGE);
+    }
+
+    @Bean
+    public Queue orderQueue() {
+        return new Queue(ORDER_QUEUE, true);
+    }
+
+    @Bean
+    public Binding orderBinding(Queue orderQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(orderQueue)
+            .to(orderExchange).with(ORDER_ROUTING_KEY);
+    }
+
+    // === STOCK EXCHANGE & QUEUES ===
+    @Bean
+    public TopicExchange stockExchange() {
+        return new TopicExchange(STOCK_EXCHANGE);
+    }
+
+    @Bean
+    public Queue stockReservedQueue() {
+        return new Queue(STOCK_RESERVED_QUEUE, true);
+    }
+
+    @Bean
+    public Queue stockRejectedQueue() {
+        return new Queue(STOCK_REJECTED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding stockReservedBinding(Queue stockReservedQueue, 
+                                        TopicExchange stockExchange) {
+        return BindingBuilder.bind(stockReservedQueue)
+            .to(stockExchange).with(STOCK_RESERVED_KEY);
+    }
+
+    @Bean
+    public Binding stockRejectedBinding(Queue stockRejectedQueue, 
+                                        TopicExchange stockExchange) {
+        return BindingBuilder.bind(stockRejectedQueue)
+            .to(stockExchange).with(STOCK_REJECTED_KEY);
+    }
+}</code></pre>
+
+                <h3>### Dépendances Maven (pom.xml)</h3>
+                <pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-amqp&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+
+                <h3>### Configuration Application (application.properties)</h3>
+                <pre><code># RabbitMQ Configuration
+spring.rabbitmq.host=localhost
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest</code></pre>
+
+                <div class="info-box">
+                    <h3>✅ Checklist de Configuration</h3>
+                    <ul>
+                        <li>Installer RabbitMQ: <code>brew install rabbitmq</code> (Mac) ou Docker</li>
+                        <li>Démarrer RabbitMQ: <code>rabbitmq-server</code></li>
+                        <li>Accéder à l'interface: <a href="http://localhost:15672">http://localhost:15672</a> (guest/guest)</li>
+                        <li>Ajouter la dépendance spring-boot-starter-amqp</li>
+                        <li>Créer RabbitMQConfig.java dans les 2 services</li>
+                        <li>Créer les Event classes (DTOs) dans les 2 services</li>
+                        <li>Créer les Listeners (@RabbitListener)</li>
+                        <li>Créer les Publishers (RabbitTemplate)</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SECTION 6: RÉSUMÉ -->
+            <section id="resume">
+                <h2>## 6. RÉSUMÉ DES 4 ÉTAPES</h2>
+
+                <table>
+                    <tr>
+                        <th>Étape</th>
+                        <th>Service</th>
+                        <th>Action</th>
+                        <th>Classe Clé</th>
+                    </tr>
+                    <tr>
+                        <td><strong>1. PARLER</strong></td>
+                        <td>Order Service</td>
+                        <td>Publier OrderCreatedEvent</td>
+                        <td>OrderEventPublisher<br>RabbitTemplate.convertAndSend()</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2. ÉCOUTER</strong></td>
+                        <td>Product Service</td>
+                        <td>Recevoir OrderCreatedEvent<br>Vérifier stock</td>
+                        <td>OrderEventListener<br>@RabbitListener</td>
+                    </tr>
+                    <tr>
+                        <td><strong>3. RÉPONDRE</strong></td>
+                        <td>Product Service</td>
+                        <td>Publier StockReservedEvent<br>ou StockRejectedEvent</td>
+                        <td>RabbitTemplate.convertAndSend()</td>
+                    </tr>
+                    <tr>
+                        <td><strong>4. METTRE À JOUR</strong></td>
+                        <td>Order Service</td>
+                        <td>Recevoir réponse<br>Changer statut commande</td>
+                        <td>StockEventListener<br>@RabbitListener</td>
+                    </tr>
+                </table>
+
+                <h3>### Avantages de RabbitMQ</h3>
+                <table>
+                    <tr>
+                        <th>Avantage</th>
+                        <th>Explication</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Couplage faible</strong></td>
+                        <td>Order Service ne connaît pas Product Service directement</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Résilience</strong></td>
+                        <td>Si Product Service tombe, les messages restent dans la queue</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Scalabilité</strong></td>
+                        <td>Plusieurs instances de Product Service peuvent écouter la même queue</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Performance</strong></td>
+                        <td>Order Service ne bloque pas en attendant la réponse</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Flexibilité</strong></td>
+                        <td>Facile d'ajouter de nouveaux services qui écoutent les mêmes événements</td>
+                    </tr>
+                </table>
+
+                <div class="example">
+                    <strong>💡 Conseil Final</strong>
+                    <p>Pour déboguer RabbitMQ, utilisez l'interface web: <a href="http://localhost:15672">http://localhost:15672</a></p>
+                    <p>Vous pouvez y voir:</p>
+                    <ul>
+                        <li>Les queues créées et leur contenu</li>
+                        <li>Le nombre de messages en attente</li>
+                        <li>Les exchanges et leurs bindings</li>
+                        <li>Les connexions actives</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>© 2025 - Cours Microservices</p>
+            <p>Développé avec ❤️ pour apprendre RabbitMQ</p>
+        </footer>
+    </div>
+</body>
+</html>
