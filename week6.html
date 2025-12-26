@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Week 6 - Déploiement et Sécurité | BINV3140</title>
-    <link rel="stylesheet" href="style.css">
+    <link id="main-style" rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
@@ -780,7 +780,32 @@
 
             <div class="back-btn">
                 <a href="index.html" class="btn">← Retour à l'accueil</a>
+                    <button id="theme-toggle" class="btn" style="margin-left:20px;">Changer de thème</button>
             </div>
+        </div>
+        <script>
+        // Basculer entre style.css et content-style.css
+        const styleLink = document.getElementById('main-style');
+        const btn = document.getElementById('theme-toggle');
+        // Stocker le thème dans le localStorage pour garder le choix
+        function setTheme(theme) {
+            styleLink.href = theme;
+            localStorage.setItem('theme', theme);
+        }
+        btn.addEventListener('click', function() {
+            const current = styleLink.getAttribute('href');
+            if (current === 'style.css') {
+                setTheme('content-style.css');
+            } else {
+                setTheme('style.css');
+            }
+        });
+        // Charger le thème choisi précédemment
+        const saved = localStorage.getItem('theme');
+        if (saved && saved !== styleLink.getAttribute('href')) {
+            styleLink.href = saved;
+        }
+        </script>
         </main>
 
         <footer>
