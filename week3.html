@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Week 2 - Communication entre Microservices</title>
-    <link rel="stylesheet" href="content-style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
@@ -322,17 +322,17 @@
                         <tr>
                             <td><strong>Service Unavailability<br>(Indisponibilité du service)</strong></td>
                             <td>Quand un service dépend d'un autre, une panne dans le service appelé peut bloquer l'appelant. Cela peut créer une réaction en chaîne où une seule panne fait tomber plusieurs parties du système.</td>
-                            <td>Ajouter des timeouts et des retries pour que l'appelant n'attende pas éternellement. Utiliser le pattern Circuit Breaker pour arrêter temporairement d'appeler les services défaillants jusqu'à ce qu'ils récupèrent.</td>
+                            <td>Ajouter des timeouts et des retries pour que l'appelant n'attende pas éternellement. Utiliser le pattern Circuit Breaker (un disjoncteur) pour arrêter temporairement d'appeler les services défaillants jusqu'à ce qu'ils récupèrent.</td>
                         </tr>
                         <tr>
                             <td><strong>High Latency<br>(Latence élevée)</strong></td>
                             <td>Une seule requête utilisateur peut passer par de nombreux services. Chaque hop supplémentaire ajoute du temps d'attente, donc la réponse totale peut devenir très lente si un service est retardé.</td>
-                            <td>Réduire le nombre de hops autant que possible, utiliser le caching pour les données communes, et laisser l'API Gateway agréger les appels pour réduire les allers-retours.</td>
+                            <td>Réduire le nombre de hops autant que possible, utiliser le caching pour les données communes, et laisser l'API Gateway agréger (fusioner plusieurs requête) les appels pour réduire les allers-retours.</td>
                         </tr>
                         <tr>
                             <td><strong>Traffic Spikes<br>(Pics de trafic)</strong></td>
                             <td>Une soudaine rafale de requêtes peut submerger un service et le faire crasher ou rejeter les utilisateurs.</td>
-                            <td>Utiliser des queues asynchrones pour absorber les pics. Activer l'auto-scaling et appliquer du rate limiting pour protéger les services sous forte charge.</td>
+                            <td>Utiliser des queues asynchrones pour absorber les pics. Activer l'auto-scaling (Ajouter/retirer automatiquement des serveurs selon la charge)et appliquer du rate limiting pour protéger les services sous forte charge.</td>
                         </tr>
                         <tr>
                             <td><strong>Messages Duplication<br>(Duplication de messages)</strong></td>
